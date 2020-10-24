@@ -599,7 +599,7 @@ Product types indicate the complexity of the order you want to place. Valid prod
 
 ## Working with examples
 
-[Here](https://github.com/algo2t/alphatrade), examples directory there are 3 files `sas_login_eg.py`, `streaming_data.py` and `stop.txt`
+[Here](https://github.com/algo2t/alphatrade/tree/main/examples), examples directory there are 3 files `sas_login_eg.py`, `streaming_data.py` and `stop.txt`
 
 ### Steps
 
