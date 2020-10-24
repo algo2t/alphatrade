@@ -2,17 +2,17 @@
 
 The Python APIs for communicating with the SAS Online Alpha Trade Web Platform.
 
-Alpha Trade Python library provides an easy to use wrapper over the HTTPS APIs.
+Alpha Trade Python library provides an easy to use python wrapper over the HTTPS APIs.
 
 The HTTP calls have been converted to methods and JSON responses are wrapped into Python-compatible objects.
 
 Websocket connections are handled automatically within the library.
 
-This work is completely based on Python SDK for [aliceblueonline](https://github.com/krishnavelu/alice_blue.git). 
-Thanks to [krishnavelu](https://github.com/krishnavelu/)
+This work is completely based on Python SDK / APIs for [AliceBlueOnline](https://github.com/krishnavelu/alice_blue.git).  
+Thanks to [krishnavelu](https://github.com/krishnavelu/).  
 
 - **Author: [algo2t](https://github.com/algo2t/)**
-- **Github Repository: [alphatrade](https://github.com/krishnavelu/alice_blue.git)**
+- **Github Repository: [alphatrade](https://github.com/algo2t/alphatrade.git)**
 
 ## Installation
 
@@ -43,7 +43,7 @@ The modules can also be installed using `pip`
 
 ## Examples  
 
-Check [here](https://github.com/algo2t/alphatrade#working-examples)
+Check [here](https://algo2t.github.io/alphatrade/#working-with-examples)
 
 ## Getting started with API
 
@@ -612,15 +612,15 @@ Product types indicate the complexity of the order you want to place. Valid prod
 - Provide correct login credentials like login_id, password and twofa
 - twofa must be same for all questions under two factor authentication
 - This is generally set from the homepage of alpha web trading platform [here](https://alpha.sasonline.in/)
-- Click on `FORGET PASSWORD?` => Select `Reset 2FA` radio button.
-- Enter the CLIENT ID (LOGIN_ID), EMAIL ID and PAN NUMBER, click on `RESET` button.
+- Click on `FORGET PASSWORD?` => Select `Reset 2FA` radio button.  ![image](https://raw.githubusercontent.com/algo2t/alphatrade/main/snaps/forget_password.png)
+- Enter the CLIENT ID (LOGIN_ID), EMAIL ID and PAN NUMBER, click on `RESET` button.  ![image](https://raw.githubusercontent.com/algo2t/alphatrade/main/snaps/reset_two_fa.png)
 - Click on `BACK TO LOGIN` and enter `CLIENT ID` and `PASSWORD`, click on `SECURED SIGN-IN`
-- Set same answers for 5 questions and click on `SUBMIT` button.
+- Set same answers for 5 questions and click on `SUBMIT` button.  ![image](https://raw.githubusercontent.com/algo2t/alphatrade/main/snaps/set_answers.png)
 
 `config.py`
 ```python
-login_id = "RR"
-password = "SAS@131"
+login_id = "RR249"
+password = "SAS@249"
 twofa = "rr"
 
 try:
