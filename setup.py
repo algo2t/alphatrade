@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name='alphatrade',
     packages=setuptools.find_packages(),
-    version='0.1.0',
+    version='0.1.1',
     include_package_data=True,
     description='Python APIs for SAS Online Alpha Trade Web Platform',
     long_description=long_description,
