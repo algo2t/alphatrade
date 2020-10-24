@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",  author = 'Algo 2 Trade',
     author_email = 'help@algo2.trade',
     url = 'https://github.com/algo2t/alphatrade',
-    install_requires=['requests', 'websocket_client', 'pandas', 'protlib'],
+    install_requires=['requests', 'websocket_client', 'protlib'],
     keywords = ['alphatrade', 'alpha-trade', 'sasonline','python', 'sdk', 'trading', 'stock markets'],
     python_requires='>=3.6',
     classifiers=[

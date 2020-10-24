@@ -8,7 +8,11 @@ The HTTP calls have been converted to methods and JSON responses are wrapped int
 
 Websocket connections are handled automatically within the library.
 
+This work is completely based on Python SDK for [aliceblueonline](https://github.com/krishnavelu/alice_blue.git). 
+Thanks to [krishnavelu](https://github.com/krishnavelu/)
+
 - **Author: [algo2t](https://github.com/algo2t/)**
+- **Github Repository: [alphatrade](https://github.com/krishnavelu/alice_blue.git)**
 
 ## Installation
 
@@ -36,6 +40,10 @@ Also, you need the following modules:
 - `requests`
 
 The modules can also be installed using `pip`
+
+## Examples  
+
+Check [here](https://github.com/algo2t/alphatrade#working-examples)
 
 ## Getting started with API
 
@@ -70,7 +78,7 @@ from alphatrade import *
 
 ### Create AlphaTrade Object
 
-1. Create `AlphaTrade` object with your `login_id`, `password`, `2FA` or `access_token`.
+1. Create `AlphaTrade` object with your `login_id`, `password`, `2FA` and/or `access_token`.
 
 ```python
 sas = AlphaTrade(login_id='login_id', password='password', twofa='a', access_token=access_token)
@@ -589,9 +597,43 @@ Product types indicate the complexity of the order you want to place. Valid prod
 - `ProductType.CoverOrder` - Cover order
 - `ProductType.BracketOrder` - One cancels other order. Also known as bracket order
 
+## Working with examples
+
+[Here](https://github.com/algo2t/alphatrade), examples directory there are 3 files `sas_login_eg.py`, `streaming_data.py` and `stop.txt`
+
+### Steps
+
+- Clone the repository to your local machine `git clone https://github.com/algo2t/alphatrade.git`
+- Copy the examples directory to any location where you want to write your code
+- Install the `alphatrade` module using `pip` => `python -m pip install https://github.com/algo2t/alphatrade.git`
+- Open the examples directory in your favorite editor, in our case it is [VSCodium](https://vscodium.com/)
+- Open the `sas_login_eg.py` file in the editor
+- Now, create `config.py` file as per instructions given below and in the above file
+- Provide correct login credentials like login_id, password and twofa
+- twofa must be same for all questions under two factor authentication
+- This is generally set from the homepage of alpha web trading platform [here](https://alpha.sasonline.in/)
+- Click on `FORGET PASSWORD?` => Select `Reset 2FA` radio button.
+- Enter the CLIENT ID (LOGIN_ID), EMAIL ID and PAN NUMBER, click on `RESET` button.
+- Click on `BACK TO LOGIN` and enter `CLIENT ID` and `PASSWORD`, click on `SECURED SIGN-IN`
+- Set same answers for 5 questions and click on `SUBMIT` button.
+
+`config.py`
+```python
+login_id = "RR"
+password = "SAS@131"
+twofa = "rr"
+
+try:
+    access_token = open('access_token.txt', 'r').read().rstrip()
+except Exception as e:
+    print('Exception occurred :: {}'.format(e))
+    access_token = None
+
+```
+
 ## Example strategy using alpha trade API
 
-[Here](https://github.com/algo2t/alphatrade) is an example moving average strategy using alpha trade web API.
+[Here](https://github.com/algo2t/alphatrade/blob/main/examples/streaming_data.py) is an example moving average strategy using alpha trade web API.
 This strategy generates a buy signal when 5-EMA > 20-EMA (golden cross) or a sell signal when 5-EMA < 20-EMA (death cross).
 
 ## Read this before creating an issue
