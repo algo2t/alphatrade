@@ -1,3 +1,4 @@
 requests
 websocket_client
 protlib
+pandas

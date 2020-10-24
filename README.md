@@ -636,6 +636,35 @@ except Exception as e:
 [Here](https://github.com/algo2t/alphatrade/blob/main/examples/streaming_data.py) is an example moving average strategy using alpha trade web API.
 This strategy generates a buy signal when 5-EMA > 20-EMA (golden cross) or a sell signal when 5-EMA < 20-EMA (death cross).
 
+## Example for getting historical and intraday candles data
+
+[Here](https://github.com/algo2t/alphatrade/blob/main/examples/historical_data.py) is an example for getting historical data using alpha trade web API.
+
+For historical candles data `start_time` and `end_time` must be provided in format as shown below.
+It can also be provided as `timedelta`. Check the script `historical_data.py` in examples.
+
+```python
+from datetime import datetime, timedelta
+start_time = datetime(2020, 10, 19, 9, 15, 0)
+end_time = datetime(2020, 10, 21, 16, 59, 0)
+
+df = sas.get_historical_candles('MCX', 'NATURALGAS OCT FUT', start_time, end_time, 5)
+print(df)
+end_time = start_time + timedelta(days=5)
+df = sas.get_historical_candles('MCX', 'NATURALGAS NOV FUT', start_time, end_time, 15)
+print(df)
+```
+
+For intraday or today's / current day's candles data.  
+
+```python
+df = sas.get_intraday_candles('MCX', 'NATURALGAS OCT FUT')
+print(df)
+df = sas.get_intraday_candles('MCX', 'NATURALGAS NOV FUT', 15)
+print(df)
+```
+
+
 ## Read this before creating an issue
 
 Before creating an issue in this library, please follow the following steps.

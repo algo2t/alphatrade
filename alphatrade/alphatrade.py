@@ -4,7 +4,7 @@ import threading
 import websocket
 import logging
 import enum
-import datetime
+from datetime import datetime
 from time import sleep
 from collections import OrderedDict
 from protlib import CUInt, CStruct, CULong, CUChar, CArray, CUShort, CString
@@ -259,6 +259,13 @@ class AlphaTrade(object):
         self.ws_thread = None
 
     def __is_token_valid(self):
+        if self.__access_token is None:
+            try:
+                self.__access_token = open(
+                    'access_token.txt', 'r').read().rstrip()
+            except Exception as e:
+                print('Exception occurred :: {}'.format(e))
+                self.__access_token = None
         self.__headers['X-Authorization-Token'] = self.__access_token
         profile_url = 'https://alpha.sasonline.in/api/v2/profile'
 
@@ -302,9 +309,7 @@ class AlphaTrade(object):
             wr.write(auth_token)
 
         self.__access_token = auth_token
-        self.headers = {
-            'X-Authorization-Token': self.__access_token
-        }
+        self.__headers['X-Authorization-Token'] = self.__access_token
 
     def __convert_prices(self, dictionary, multiplier):
         keys = ['ltp',
@@ -533,7 +538,7 @@ class AlphaTrade(object):
                     product_type, price=0.0, trigger_price=None,
                     stop_loss=None, square_off=None, trailing_sl=None,
                     is_amo=False,
-                    order_tag='order1'):
+                    order_tag='python'):
         """ placing an order, many fields are optional and are not required
             for all order types
         """
@@ -668,7 +673,8 @@ class AlphaTrade(object):
             if (i['product_type'] == ProductType.Intraday):
                 i['product_type'] = 'MIS'
             elif i['product_type'] == ProductType.Delivery:
-                i['product_type'] = 'NRML' if (i['instrument'].exchange == 'NFO') else 'CNC'
+                i['product_type'] = 'NRML' if (
+                    i['instrument'].exchange == 'NFO') else 'CNC'
             elif i['product_type'] in [
                 ProductType.CoverOrder,
                 ProductType.BracketOrder,
@@ -994,7 +1000,7 @@ class AlphaTrade(object):
 
                 # convert expiry to none if it's non-existent
                 if('expiry' in scrip):
-                    expiry = datetime.datetime.fromtimestamp(
+                    expiry = datetime.fromtimestamp(
                         scrip['expiry']).date()
                 else:
                     expiry = None
@@ -1034,11 +1040,13 @@ class AlphaTrade(object):
             headers['authorization'] = f"Bearer {self.__access_token}"
         r = None
         if http_method is Requests.POST:
-            r = self.reqsession.post(url, data=json.dumps(data), headers=headers)
+            r = self.reqsession.post(
+                url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.DELETE:
             r = self.reqsession.delete(url, headers=headers)
         elif http_method is Requests.PUT:
-            r = self.reqsession.put(url, data=json.dumps(data), headers=headers)
+            r = self.reqsession.put(
+                url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.GET:
             r = self.reqsession.get(url, headers=headers)
         return r
@@ -1047,11 +1055,10 @@ class AlphaTrade(object):
         exchange = exchange.upper()
         divider = 100
         if exchange == 'CDS':
-            divider = 10000000
+            divider = 1e7
         symbol = symbol.upper()
         instrument = self.get_instrument_by_symbol(exchange, symbol)
         print(instrument)
-        print(instrument.token)
         start_time = int(start_time.timestamp())
         end_time = int(end_time.timestamp())
 
@@ -1069,3 +1076,65 @@ class AlphaTrade(object):
             'https://alpha.sasonline.in/api/v1/charts', params=PARAMS, headers=self.__headers)
         data = r.json()
         return self.__format_candles(data, divider)
+
+    def get_intraday_candles(self, exchange, symbol, interval=5):
+        exchange = exchange.upper()
+        divider = 100
+        if exchange == 'CDS':
+            divider = 1e7
+        symbol = symbol.upper()
+        today = datetime.today()
+        start_time = int(datetime(today.year, today.month,
+                                  today.day, hour=9, minute=00).timestamp())
+
+        previous_interval_minute = datetime.now().minute // interval * interval
+
+        end_time = int(datetime(today.year, today.month,
+                                today.day, hour=today.hour, minute=previous_interval_minute).timestamp())
+
+        instrument = self.get_instrument_by_symbol(exchange, symbol)
+
+        PARAMS = {
+            'candletype': 1,
+            'data_duration': interval,
+            'starttime': start_time,
+            'endtime': end_time,
+            'exchange': exchange,
+            'type': 'live',
+            'token': instrument.token
+        }
+
+        r = self.reqsession.get(
+            'https://alpha.sasonline.in/api/v1/charts', params=PARAMS, headers=self.__headers)
+        data = r.json()
+        return self.__format_candles(data, divider)
+
+    def buy_bo(self, instrument, qty, price, trigger_price, stop_loss_value, square_off_value):
+        data = self.place_order(TransactionType.Buy, instrument, qty,
+                                OrderType.StopLossLimit, ProductType.BracketOrder,
+                                price=price, trigger_price=trigger_price, stop_loss=stop_loss_value,
+                                square_off=square_off_value, order_tag='python-buy-bo')
+        if data['status'] == 'success':
+            return data['data']['oms_order_id']
+        return data.json()
+
+    def sell_bo(self, instrument, qty, price, trigger_price, stop_loss_value, square_off_value):
+        data = self.place_order(TransactionType.Sell, instrument, qty,
+                                OrderType.StopLossLimit, ProductType.BracketOrder,
+                                price=price, trigger_price=trigger_price, stop_loss=stop_loss_value,
+                                square_off=square_off_value, order_tag='python-sell-bo')
+        if data['status'] == 'success':
+            return data['data']['oms_order_id']
+        return data.json()
+
+    def get_total_m2m(self):
+        data = self.get_netwise_positions()
+        if data['status'] != 'success':
+            return None
+        else:
+            positions = pd.DataFrame(data['data']['positions'], index=None)
+            if positions.empty:
+                return 0
+            positions['m2m'] = positions['m2m'].str.replace(
+                ',', '').astype(float)
+            return float(positions['m2m'].sum())
