@@ -27,3 +27,6 @@ df = sas.get_intraday_candles('MCX', 'NATURALGAS OCT FUT')
 print(df)
 df = sas.get_intraday_candles('MCX', 'NATURALGAS NOV FUT', 15)
 print(df)
+
+# Get Historical candles data
+print(sas.get_historical_candles('MCX', 'NATURALGAS NOV FUT', datetime(2020, 10, 19), datetime.now() ,interval=30))

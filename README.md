@@ -22,6 +22,12 @@ This module is installed via pip:
 pip install https://github.com/algo2t/alphatrade
 ```
 
+It can also be installed from [pypi](https://pypi.org/project/alphatrade/0.1.2/)  
+
+```
+pip install alphatrade
+```
+
 To force upgrade existing installations:
 
 ```
@@ -38,11 +44,13 @@ Also, you need the following modules:
 - `protlib`
 - `websocket_client`
 - `requests`
+- `pandas`
 
 The modules can also be installed using `pip`
 
-## Examples  
+## Examples - Start Here - Important 
 
+Please clone this repository and check the examples folder to get started.  
 Check [here](https://algo2t.github.io/alphatrade/#working-with-examples)
 
 ## Getting started with API
@@ -61,7 +69,7 @@ The original REST API that this SDK is based on is available online.
 
 ### Logging
 
-The whole library is equipped with python's `logging` module for debugging. If more debug information is needed, enable logging using the following code.
+The whole library is equipped with python‘s `logging` module for debugging. If more debug information is needed, enable logging using the following code.
 
 ```python
 import logging
@@ -76,12 +84,35 @@ logging.basicConfig(level=logging.DEBUG)
 from alphatrade import *
 ```
 
+2. Create `config.py` file  
+Always keep credentials in a separate file
+```python
+login_id = "RR249"
+password = "SAS@249"
+twofa = "rr"
+
+try:
+    access_token = open('access_token.txt', 'r').read().rstrip()
+except Exception as e:
+    print('Exception occurred :: {}'.format(e))
+    access_token = None
+```
+
+3. Import the config
+```python
+import config
+```
+
 ### Create AlphaTrade Object
 
 1. Create `AlphaTrade` object with your `login_id`, `password`, `2FA` and/or `access_token`.
 
+Use `config` object to get `login_id`, `password`, `twofa` and `access_token`.  
+
 ```python
-sas = AlphaTrade(login_id='login_id', password='password', twofa='a', access_token=access_token)
+from alphatrade import AlphaTrade
+import config
+sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.twofa, access_token=config.access_token)
 ```
 
 2. You can run commands here to check your connectivity
@@ -97,10 +128,10 @@ print(sas.get_holding_positions()) # get holding positions
 ### Get master contracts
 
 Getting master contracts allow you to search for instruments by symbol name and place orders.
-Master contracts are stored as an OrderedDict by token number and by symbol name. Whenever you get a trade update, order update, or quote update, the library will check if master contracts are loaded. If they are, it will attach the instrument object directly to the update. By default all master contracts of all enabled exchanges in your personal profile will be downloaded. i.e. If your profile contains the following as enabled exchanges `['NSE', 'BSE', 'CDS', 'MCX', NFO']` all contract notes of all exchanges will be downloaded by default. If you feel it takes too much time to download all exchange, or if you don't need all exchanges to be downloaded, you can specify which exchange to download contract notes while creating the AlphaTrade object.
+Master contracts are stored as an OrderedDict by token number and by symbol name. Whenever you get a trade update, order update, or quote update, the library will check if master contracts are loaded. If they are, it will attach the instrument object directly to the update. By default all master contracts of all enabled exchanges in your personal profile will be downloaded. i.e. If your profile contains the following as enabled exchanges `['NSE', 'BSE', 'CDS', 'MCX', NFO']` all contract notes of all exchanges will be downloaded by default. If you feel it takes too much time to download all exchange, or if you don‘t need all exchanges to be downloaded, you can specify which exchange to download contract notes while creating the AlphaTrade object.
 
 ```python
-sas = AlphaTrade(login_id='login_id', password='password', twofa='a', access_token=access_token, master_contracts_to_download=['NSE', 'BSE'])
+sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.twofa, access_token=config.access_token, master_contracts_to_download=['NSE', 'BSE'])
 ```
 
 This will reduce a few milliseconds in object creation time of AlphaTrade object.
@@ -109,7 +140,7 @@ This will reduce a few milliseconds in object creation time of AlphaTrade object
 
 Symbols can be retrieved in multiple ways. Once you have the master contract loaded for an exchange, you can get an instrument in many ways.
 
-Get a single instrument by it's name:
+Get a single instrument by it‘s name:
 
 ```python
 tatasteel_nse_eq = sas.get_instrument_by_symbol('NSE', 'TATASTEEL')
@@ -119,7 +150,7 @@ india_vix_nse_index = sas.get_instrument_by_symbol('NSE', 'India VIX')
 sensex_nse_index = sas.get_instrument_by_symbol('BSE', 'SENSEX')
 ```
 
-Get a single instrument by it's token number (generally useful only for BSE Equities):
+Get a single instrument by it‘s token number (generally useful only for BSE Equities):
 
 ```python
 ongc_bse_eq = sas.get_instrument_by_token('BSE', 500312)
@@ -144,7 +175,7 @@ all_sensex_scrips = sas.search_instruments('BSE', 'sEnSeX')
 print(all_sensex_scrips)
 ```
 
-The above code results multiple symbol which has 'sensex' in its symbol.
+The above code results multiple symbol which has ‘sensex’ in its symbol.
 
 ```
 [Instrument(exchange='BSE', token=1, symbol='SENSEX', name='SENSEX', expiry=None, lot_size=None), Instrument(exchange='BSE', token=540154, symbol='IDFSENSEXE B', name='IDFC Mutual Fund', expiry=None, lot_size=None), Instrument(exchange='BSE', token=532985, symbol='KTKSENSEX B', name='KOTAK MAHINDRA MUTUAL FUND', expiry=None, lot_size=None), Instrument(exchange='BSE', token=538683, symbol='NETFSENSEX B', name='NIPPON INDIA ETF SENSEX', expiry=None, lot_size=None), Instrument(exchange='BSE', token=535276, symbol='SBISENSEX B', name='SBI MUTUAL FUND - SBI ETF SENS', expiry=None, lot_size=None)]
@@ -166,7 +197,7 @@ Instrument = namedtuple('Instrument', ['exchange', 'token', 'symbol',
                                       'name', 'expiry', 'lot_size'])
 ```
 
-All instruments have the fields mentioned above. Wherever a field is not applicable for an instrument (for example, equity instruments don't have strike prices), that value will be `None`
+All instruments have the fields mentioned above. Wherever a field is not applicable for an instrument (for example, equity instruments don‘t have strike prices), that value will be `None`
 
 ### Quote update
 
@@ -259,7 +290,7 @@ Example result of `get_market_status_messages()`
 [{'exchange': 'NSE', 'length_of_market_type': 6, 'market_type': b'NORMAL', 'length_of_status': 31, 'status': b'The Closing Session has closed.'}, {'exchange': 'NFO', 'length_of_market_type': 6, 'market_type': b'NORMAL', 'length_of_status': 45, 'status': b'The Normal market has closed for 22 MAY 2020.'}, {'exchange': 'CDS', 'length_of_market_type': 6, 'market_type': b'NORMAL', 'length_of_status': 45, 'status': b'The Normal market has closed for 22 MAY 2020.'}, {'exchange': 'BSE', 'length_of_market_type': 13, 'market_type': b'OTHER SESSION', 'length_of_status': 0, 'status': b''}]
 ```
 
-Note: As per `alice blue` [documentation](http://antplus.aliceblueonline.com/#market-status) all market status messages should be having a timestamp. But in actual the server doesn't send timestamp, so the library is unable to get timestamp for now.
+Note: As per `alice blue` [documentation](http://antplus.aliceblueonline.com/#market-status) all market status messages should be having a timestamp. But in actual the server doesn‘t send timestamp, so the library is unable to get timestamp for now.
 
 Subscribe to exchange messages
 
@@ -568,9 +599,51 @@ print(sas.get_order_history())
 print(sas.get_trade_book())
 ```
 
+#### Get historical candles data
+
+This will provide historical data but **not for current day**.  
+This returns a `pandas` `DataFrame` object which be used with `pandas_ta` to get various indicators values.  
+
+```python
+from datetime import datetime
+print(sas.get_historical_candles('MCX', 'NATURALGAS NOV FUT', datetime(2020, 10, 19), datetime.now() ,interval=30))
+```
+
+Output 
+
+```console
+Instrument(exchange='MCX', token=224365, symbol='NATURALGAS NOV FUT', name='', expiry=datetime.date(2020, 11, 24), lot_size=None)
+                            open   high    low  close  volume
+date
+2020-10-19 09:00:00+05:30  238.9  239.2  238.4  239.0     373
+2020-10-19 09:30:00+05:30  239.0  239.0  238.4  238.6     210
+2020-10-19 10:00:00+05:30  238.7  238.7  238.1  238.1     213
+2020-10-19 10:30:00+05:30  238.0  238.4  238.0  238.1     116
+2020-10-19 11:00:00+05:30  238.1  238.2  238.0  238.0      69
+...                          ...    ...    ...    ...     ...
+2020-10-23 21:00:00+05:30  237.5  238.1  237.3  237.6     331
+2020-10-23 21:30:00+05:30  237.6  238.5  237.6  237.9     754
+2020-10-23 22:00:00+05:30  237.9  238.1  237.2  237.9     518
+2020-10-23 22:30:00+05:30  237.9  238.7  237.7  238.1     897
+2020-10-23 23:00:00+05:30  238.2  238.3  236.3  236.5    1906
+
+```
+
+
+
+#### Get intraday candles data
+
+This will give candles data for **current day only**.  
+This returns a `pandas` `DataFrame` object which be used with `pandas_ta` to get various indicators values.  
+
+```python
+print(sas.get_intraday_candles('MCX', 'NATURALGAS NOV FUT', interval=15))
+```
+
+
 ### Order properties as enums
 
-Order properties such as TransactionType, OrderType, and others have been safely classified as enums so you don't have to write them out as strings
+Order properties such as TransactionType, OrderType, and others have been safely classified as enums so you don‘t have to write them out as strings
 
 #### TransactionType
 
@@ -655,7 +728,7 @@ df = sas.get_historical_candles('MCX', 'NATURALGAS NOV FUT', start_time, end_tim
 print(df)
 ```
 
-For intraday or today's / current day's candles data.  
+For intraday or today‘s / current day‘s candles data.  
 
 ```python
 df = sas.get_intraday_candles('MCX', 'NATURALGAS OCT FUT')
@@ -671,7 +744,7 @@ Before creating an issue in this library, please follow the following steps.
 
 1. Search the problem you are facing is already asked by someone else. There might be some issues already there, either solved/unsolved related to your problem. Go to [issues](https://github.com/algo2t/alphatrade/issues) page, use `is:issue` as filter and search your problem. ![image](https://user-images.githubusercontent.com/38440742/85207058-376ee400-b2f4-11ea-91ad-c8fd8a682a12.png)
 2. If you feel your problem is not asked by anyone or no issues are related to your problem, then create a new issue.
-3. Describe your problem in detail while creating the issue. If you don't have time to detail/describe the problem you are facing, assume that I also won't be having time to respond to your problem.
+3. Describe your problem in detail while creating the issue. If you don‘t have time to detail/describe the problem you are facing, assume that I also won‘t be having time to respond to your problem.
 4. Post a sample code of the problem you are facing. If I copy paste the code directly from issue, I should be able to reproduce the problem you are facing.
 5. Before posting the sample code, test your sample code yourself once. Only sample code should be tested, no other addition should be there while you are testing.
 6. Have some print() function calls to display the values of some variables related to your problem.
