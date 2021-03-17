@@ -19,7 +19,7 @@ Thanks to [krishnavelu](https://github.com/krishnavelu/).
 This module is installed via pip:
 
 ```
-pip install https://github.com/algo2t/alphatrade
+pip install git+https://github.com/algo2t/alphatrade.git
 ```
 
 It can also be installed from [pypi](https://pypi.org/project/alphatrade/0.1.2/)  
@@ -629,6 +629,15 @@ date
 
 ```
 
+Better way to get historical data, first get the latest version from github  
+
+`python -m pip install git+https://github.com/algo2t/alphatrade.git`
+
+```python
+from datetime import datetime
+india_vix_nse_index = sas.get_instrument_by_symbol('NSE', 'India VIX')
+print(sas.get_historical_candles(india_vix_nse_index.exchange, india_vix_nse_index.symbol, datetime(2020, 10, 19), datetime.now() ,interval=30))
+```
 
 
 #### Get intraday candles data
@@ -640,6 +649,15 @@ This returns a `pandas` `DataFrame` object which be used with `pandas_ta` to get
 print(sas.get_intraday_candles('MCX', 'NATURALGAS NOV FUT', interval=15))
 ```
 
+Better way to get intraday data, first get the latest version from github  
+
+`python -m pip install git+https://github.com/algo2t/alphatrade.git`
+
+```python
+from datetime import datetime
+nifty_bank_nse_index = sas.get_instrument_by_symbol('NSE', 'Nifty Bank')
+print(sas.get_intraday_candles(nifty_bank_nse_index.exchange, nifty_bank_nse_index.symbol, datetime(2020, 10, 19), datetime.now(), interval=10))
+```
 
 ### Order properties as enums
 
