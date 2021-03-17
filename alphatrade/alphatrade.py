@@ -1056,7 +1056,7 @@ class AlphaTrade(object):
         divider = 100
         if exchange == 'CDS':
             divider = 1e7
-        symbol = symbol.upper()
+        # symbol = symbol.upper()
         instrument = self.get_instrument_by_symbol(exchange, symbol)
         print(instrument)
         start_time = int(start_time.timestamp())
@@ -1082,7 +1082,7 @@ class AlphaTrade(object):
         divider = 100
         if exchange == 'CDS':
             divider = 1e7
-        symbol = symbol.upper()
+        # symbol = symbol.upper()
         today = datetime.today()
         start_time = int(datetime(today.year, today.month,
                                   today.day, hour=9, minute=00).timestamp())
