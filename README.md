@@ -1,4 +1,5 @@
 # Python APIs for SAS Online Alpha Trade Web Platform
+# NOTE:: This is Unofficial python module, don't ask SAS support team for help, use it AS-IS
 
 The Python APIs for communicating with the SAS Online Alpha Trade Web Platform.
 
