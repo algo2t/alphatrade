@@ -131,3 +131,5 @@ dmypy.json
 # examples access_token.txt
 examples/config.py
 examples/access_token.txt
+.vscode/settings.json
+.vscode/launch.json

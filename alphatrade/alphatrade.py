@@ -4,7 +4,7 @@ import threading
 import websocket
 import logging
 import enum
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from time import sleep
 from collections import OrderedDict
 from protlib import CUInt, CStruct, CULong, CUChar, CArray, CUShort, CString
@@ -188,6 +188,12 @@ class AlphaTrade(object):
         },
         'socket_endpoint': 'wss://alpha.sasonline.in/hydrasocket/v2/websocket?access_token={access_token}'
     }
+
+    _candletype = {1: 1, 2: 1, 3: 1, 5: 1, 10: 1, 15: 1,
+                   30: 1, 45: 1, '1H': 2, '2H': 2, '3H': 2, '4H': 2, '1D': 3, 'D': 3, 'W': 3, 'M': 3}
+
+    _data_duration = {1: 1, 2: 2, 3: 3, 5: 5, 10: 10, 15: 15,
+                      30: 30, 45: 45, '1H': None, '2H': 2, '3H': 2, '4H': 2, '1D': None, 'D': None, 'W': None, 'M': None}
 
     def __init__(self, login_id, password, twofa, access_token=None, master_contracts_to_download=None):
         """ logs in and gets enabled exchanges and products for user """
@@ -534,6 +540,18 @@ class AlphaTrade(object):
         """ Get enabled exchanges """
         return self.__enabled_exchanges
 
+    def __get_product_type_str(self, product_type, exchange):
+        prod_type = None
+        if (product_type == ProductType.Intraday):
+            prod_type = 'MIS'
+        elif product_type == ProductType.Delivery:
+            prod_type = 'NRML' if exchange in ['NFO', 'MCX', 'CDS'] else 'CNC'
+        elif(product_type == ProductType.CoverOrder):
+            prod_type = 'CO'
+        elif(product_type == ProductType.BracketOrder):
+            prod_type = None
+        return prod_type
+
     def place_order(self, transaction_type, instrument, quantity, order_type,
                     product_type, price=0.0, trigger_price=None,
                     stop_loss=None, square_off=None, trailing_sl=None,
@@ -568,15 +586,8 @@ class AlphaTrade(object):
             raise TypeError(
                 "Optional parameter trigger_price not of type float")
 
-        if (product_type == ProductType.Intraday):
-            prod_type = 'MIS'
-        elif product_type == ProductType.Delivery:
-            prod_type = 'NRML' if instrument.exchange in [
-                'NFO', 'MCX', 'CDS'] else 'CNC'
-        elif(product_type == ProductType.CoverOrder):
-            prod_type = 'CO'
-        elif(product_type == ProductType.BracketOrder):
-            prod_type = None
+        prod_type = self.__get_product_type_str(
+            product_type, instrument.exchange)
         # construct order object after all required parameters are met
         order = {'exchange': instrument.exchange,
                  'order_type': order_type.value,
@@ -670,6 +681,18 @@ class AlphaTrade(object):
                         "Element price in orders should be of type float")
             else:
                 i['price'] = 0.0
+            if i['order_type'] in [
+                OrderType.StopLossLimit,
+                OrderType.StopLossMarket,
+            ]:
+                if 'trigger_price' not in i:
+                    raise TypeError(
+                        f"Each element in orders should have key 'trigger_price' if it is an {i['order_type']} order")
+                if not isinstance(i['trigger_price'], float):
+                    raise TypeError(
+                        "Element trigger_price in orders should be of type float")
+            else:
+                i['trigger_price'] = 0.0
             if (i['product_type'] == ProductType.Intraday):
                 i['product_type'] = 'MIS'
             elif i['product_type'] == ProductType.Delivery:
@@ -695,7 +718,7 @@ class AlphaTrade(object):
                                    'disclosed_quantity': 0,
                                    'price': i['price'],
                                    'transaction_type': i['transaction_type'].value,
-                                   'trigger_price': 0,
+                                   'trigger_price': i['trigger_price'],
                                    'validity': 'DAY',
                                    'product': i['product_type']})
 
@@ -1030,7 +1053,7 @@ class AlphaTrade(object):
         return json.loads(response.text)
 
     def __api_call(self, url, http_method, data):
-        #logger.debug('url:: %s http_method:: %s data:: %s headers:: %s', url, http_method, data, headers)
+        # logger.debug('url:: %s http_method:: %s data:: %s headers:: %s', url, http_method, data, headers)
         headers = {"Content-Type": "application/json"}
         if(len(self.__access_token) > 100):
             headers['X-Authorization-Token'] = self.__access_token
@@ -1051,8 +1074,9 @@ class AlphaTrade(object):
             r = self.reqsession.get(url, headers=headers)
         return r
 
-    def get_historical_candles(self, exchange, symbol, start_time, end_time, interval=5):
+    def get_historical_candles(self, exchange, symbol, start_time, end_time, interval=5, is_index=False):
         exchange = exchange.upper()
+        idx = '' if not is_index else '_INDICES'
         divider = 100
         if exchange == 'CDS':
             divider = 1e7
@@ -1067,7 +1091,7 @@ class AlphaTrade(object):
             'data_duration': interval,
             'starttime': start_time,
             'endtime': end_time,
-            'exchange': exchange,
+            'exchange': exchange + idx,
             'type': 'historical',
             'token': instrument.token
         }
@@ -1138,3 +1162,55 @@ class AlphaTrade(object):
             positions['m2m'] = positions['m2m'].str.replace(
                 ',', '').astype(float)
             return float(positions['m2m'].sum())
+
+    def _format_candles(self, data, interval):
+        records = data['data']['candles']
+        df = pd.DataFrame(records, columns=[
+            'datetime', 'open', 'high', 'low', 'close', 'volume'])  # , index=0)
+        df['datetime'] = df['datetime'].apply(
+            pd.Timestamp, unit='s', tzinfo=pytz.timezone('Asia/Kolkata'))
+
+        df[['open', 'high', 'low', 'close']] = df[[
+            'open', 'high', 'low', 'close']].astype(float)
+        df['volume'] = df['volume'].astype(int)
+        df.set_index('datetime', inplace=True)
+        if interval in ['2H', '3H', '4H', 'W', 'M']:
+            if interval == 'W':
+                interval = 'W-Mon'
+            df = df.resample(interval, origin='start').agg({'open': 'first', 'high': 'max',
+                                                            'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna()
+        df.index = df.index.astype(str).str[:-6]
+        return df
+
+    def history(self, instrument, start_time=datetime.today() - timedelta(days=2), end_time=datetime.now(), interval=1, is_index=False):
+        exchange = instrument.exchange
+        start_time = int(start_time.timestamp())
+        end_time = int(end_time.timestamp())
+        if is_index:
+            exchange = 'NSE_INDICES'
+
+        candle_type = self._candletype[interval]
+
+        data_duration = self._data_duration[interval]
+
+        PARAMS = {
+            'exchange': exchange,
+            'token': instrument.token,
+            'name': instrument.symbol,
+            'candletype': candle_type,
+            'starttime': start_time,
+            'endtime': end_time,
+            'type': 'all'
+        }
+        if data_duration is not None:
+            PARAMS['data_duration'] = data_duration
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Connection': 'Keep-Alive',
+            'Accept': 'application/json'
+        }
+        r = requests.get(
+            'https://ant.aliceblueonline.com/api/v1/charts/tdv', params=PARAMS, headers=headers)
+        data = r.json()
+        return self._format_candles(data, interval)

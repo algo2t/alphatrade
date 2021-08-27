@@ -8,25 +8,49 @@ from alphatrade import AlphaTrade
 
 import config
 
-sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.twofa)
+sas = AlphaTrade(login_id=config.login_id,
+                 password=config.password, twofa=config.twofa)
 
-usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR OCT FUT')
+usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR APR FUT')
 print(usd_inr)
-print(sas.get_balance())
+# print(sas.get_balance())
 start_time = datetime(2020, 10, 19, 9, 15, 0)
-end_time = datetime(2020, 10, 21, 16, 59, 0)
+end_time = datetime.now()
 
-df = sas.get_historical_candles('MCX', 'NATURALGAS OCT FUT', start_time, end_time, 5)
-print(df)
-end_time = start_time + timedelta(days=5)
-df = sas.get_historical_candles('MCX', 'NATURALGAS NOV FUT', start_time, end_time, 15)
-print(df)
+# df = sas.get_historical_candles(
+#     'MCX', 'NATURALGAS MAY FUT', start_time, end_time, 5)
+# print(df)
+# end_time = start_time + timedelta(days=5)
+# df = sas.get_historical_candles(
+#     'MCX', 'NATURALGAS APR FUT', start_time, end_time, 15)
+# print(df)
 
-# Get Intraday Candles data based on interval - default 5 minute
-df = sas.get_intraday_candles('MCX', 'NATURALGAS OCT FUT')
-print(df)
-df = sas.get_intraday_candles('MCX', 'NATURALGAS NOV FUT', 15)
-print(df)
+# # Get Intraday Candles data based on interval - default 5 minute
+# df = sas.get_intraday_candles('MCX', 'NATURALGAS MAY FUT')
+# print(df)
+# df = sas.get_intraday_candles('MCX', 'NATURALGAS APR FUT', 15)
+# print(df)
 
-# Get Historical candles data
-print(sas.get_historical_candles('MCX', 'NATURALGAS NOV FUT', datetime(2020, 10, 19), datetime.now() ,interval=30))
+# # Get Historical candles data
+# print(sas.get_historical_candles('MCX', 'NATURALGAS APR FUT',
+#                                  datetime(2020, 10, 19), datetime.now(), interval=30))
+
+# # Get Historical candle for Nifty Bank and India VIX
+# india_vix_nse_index = sas.get_instrument_by_symbol('NSE', 'India VIX')
+# print(sas.get_historical_candles(india_vix_nse_index.exchange,
+#                                  india_vix_nse_index.symbol, datetime(2020, 11, 30), datetime.now(), interval=30, is_index=True))
+
+nifty_bank_nse_index = sas.get_instrument_by_symbol('NSE', 'Nifty Bank')
+# print(nifty_bank_nse_index)
+print(sas.get_historical_candles(nifty_bank_nse_index.exchange,
+                                 nifty_bank_nse_index.symbol, datetime(2021, 1, 1, 9, 15, 0), datetime.now(), interval=30, is_index=True))
+
+
+# import yfinance as yf
+
+# ivix = yf.download('^INDIAVIX', period='5d', interval='15m')
+# print(ivix)
+# bnf = yf.download('^NSEBANK', period='5d', interval='15m')
+# print(bnf)
+# nf = yf.download('^NSEI', period='5d', interval='15m')
+# print(nf)
