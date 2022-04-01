@@ -33,6 +33,6 @@ sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=confi
 
 
 print(sas.get_profile())
-usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR OCT FUT')
+usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR APR FUT')
 print(usd_inr)
 print(sas.get_balance())

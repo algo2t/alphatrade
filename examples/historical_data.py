@@ -14,7 +14,7 @@ sas = AlphaTrade(login_id=config.login_id,
 usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR APR FUT')
 print(usd_inr)
 # print(sas.get_balance())
-start_time = datetime(2020, 10, 19, 9, 15, 0)
+start_time = datetime(2022, 1, 9, 9, 15, 0)
 end_time = datetime.now()
 
 # df = sas.get_historical_candles(
@@ -42,8 +42,7 @@ end_time = datetime.now()
 
 nifty_bank_nse_index = sas.get_instrument_by_symbol('NSE', 'Nifty Bank')
 # print(nifty_bank_nse_index)
-print(sas.get_historical_candles(nifty_bank_nse_index.exchange,
-                                 nifty_bank_nse_index.symbol, datetime(2021, 1, 1, 9, 15, 0), datetime.now(), interval=30, is_index=True))
+print(sas.history(nifty_bank_nse_index, datetime(2022, 2, 2, 9, 15, 0), datetime.now(), interval=30, is_index=True))
 
 
 # import yfinance as yf

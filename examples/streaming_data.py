@@ -11,7 +11,7 @@ from alphatrade import AlphaTrade, LiveFeedType
 sas = AlphaTrade(login_id=config.login_id, password=config.password,
                  twofa=config.twofa, access_token=config.access_token, master_contracts_to_download=['MCX'])
 
-ins_scrip = sas.get_instrument_by_symbol('MCX', 'NATURALGAS OCT FUT')
+ins_scrip = sas.get_instrument_by_symbol('MCX', 'NATURALGAS APR FUT')
 print(ins_scrip)
 
 ltp = 0.0
@@ -49,7 +49,7 @@ def run_strategy():
     print("Script Start Time :: " + str(datetime.datetime.now()))
     while True:
         print('current price is :: '+str(ltp))
-        if(datetime.datetime.now().second == 0 or datetime.datetime.now().second == 30):
+        if datetime.datetime.now().second in [0, 30]:
             # NOTE This is just an example to stop script without using `control + c` Keyboard Interrupt
             # It checks whether the stop.txt has word stop
             # This check is done every 30 seconds

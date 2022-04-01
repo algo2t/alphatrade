@@ -1,5 +1,4 @@
 {
-    "python.pythonPath": "d:\\trading\\alphatrade_fresh\\venv\\Scripts\\python.exe",
     "python.linting.pylintEnabled": false,
     "python.linting.banditEnabled": true,
     "python.linting.enabled": true
