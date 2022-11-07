@@ -164,9 +164,9 @@ class AlphaTrade(object):
     __service_config = {
         'host': 'https://alpha.sasonline.in',
         'routes': {
-            'login': '/api/v2/login',
-            'checktwofa': '/api/v2/checktwofa',
-            'profile': '/api/v2/profile',
+            'login': '/api/v3/user/login',
+            #'checktwofa': '/api/v3/user/validatetotp'      #'/api/v3/checktwofa',
+            'profile': '/api/v2/profile',   #'/api/v1/user/profile'
             'master_contract': '/api/v2/contracts.json?exchanges={exchange}',
             'holdings': '/api/v2/holdings',
             'balance': '/api/v2/cashposition',
@@ -273,8 +273,7 @@ class AlphaTrade(object):
                 print('Exception occurred :: {}'.format(e))
                 self.__access_token = None
         self.__headers['X-Authorization-Token'] = self.__access_token
-        profile_url = 'https://alpha.sasonline.in/api/v2/profile'
-
+        profile_url = 'https://alpha.sasonline.in/api/v3/profile'
         resp = self.reqsession.get(profile_url, headers=self.__headers)
         return resp.status_code == 200 and resp.json()['status'] == 'success'
 
@@ -285,26 +284,22 @@ class AlphaTrade(object):
             'password': self.__password
         }
         response = self.reqsession.post(
-            'https://alpha.sasonline.in/api/v2/login', json=login_body)
-
+            'https://alpha.sasonline.in/api/v3/user/login', json=login_body)
+        
         if response.status_code != 200:
             raise requests.HTTPError(response.text)
         if 'error' in response.text:
             raise requests.HTTPError(response.text)
-        question_ids = response.json()['data']['question_ids']
-
+        question_ids = response.json()['data']['twofa']['questions'][0]['question_id'] #['data']['question_ids']        
+        twofa_token = response.json()['data']['twofa']['twofa_token']
         self.__question_ids = question_ids
-
-    def __set_access_token(self):
-        twofa_body = {
-            "device": "web",
-            "count": 2,
-            'answers': [self.__twofa, self.__twofa],
-            'login_id': self.__login_id,
-            'question_ids': self.__question_ids,
-        }
+        self.__twofa_token = twofa_token
+    def __set_access_token(self):        
+        twofa_body = {"login_id":self.__login_id,
+        "twofa_token":self.__twofa_token,
+        "totp":self.__twofa}        
         response = self.reqsession.post(
-            'https://alpha.sasonline.in/api/v2/checktwofa', json=twofa_body)
+            'https://alpha.sasonline.in/api/v3/user/validatetotp', json=twofa_body)        
         if response.status_code != 200:
             raise requests.HTTPError(response.text)
         if 'error' in response.text:
@@ -375,7 +370,7 @@ class AlphaTrade(object):
 
     def __on_data_callback(self, ws=None, message=None, data_type=None, continue_flag=None):
         if(type(ws) is not websocket.WebSocketApp):  # This workaround is to solve the websocket_client's compatibility issue of older versions. ie.0.40.0 which is used in upstox. Now this will work in both 0.40.0 & newer version of websocket_client
-            message = ws
+            message = ws            
         if(message[0] == WsFrameMode.MARKETDATA):
             p = MarketData.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
@@ -1048,12 +1043,12 @@ class AlphaTrade(object):
         if params is not None:
             url = url.format(**params)
         response = self.__api_call(url, http_method, data)
-        if response.status_code != 200:
+        if response.status_code != 200:            
             raise requests.HTTPError(response.text)
         return json.loads(response.text)
 
     def __api_call(self, url, http_method, data):
-        # logger.debug('url:: %s http_method:: %s data:: %s headers:: %s', url, http_method, data, headers)
+        # logger.debug('url:: %s http_method:: %s data:: %s headers:: %s', url, http_method, data, headers)        
         headers = {"Content-Type": "application/json"}
         if(len(self.__access_token) > 100):
             headers['X-Authorization-Token'] = self.__access_token
@@ -1071,7 +1066,7 @@ class AlphaTrade(object):
             r = self.reqsession.put(
                 url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.GET:
-            r = self.reqsession.get(url, headers=headers)
+            r = self.reqsession.get(url, headers=headers)        
         return r
 
     def get_historical_candles(self, exchange, symbol, start_time, end_time, interval=5, is_index=False):
