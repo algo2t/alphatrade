@@ -88,9 +88,9 @@ from alphatrade import *
 2. Create `config.py` file  
 Always keep credentials in a separate file
 ```python
-login_id = "RR249"
-password = "SAS@249"
-twofa = "rr"
+login_id = "XXXXX"
+password = "XXXXXXXX"
+Totp = 'XXXXXXXXXXXXXXXX'
 
 try:
     access_token = open('access_token.txt', 'r').read().rstrip()
@@ -106,14 +106,19 @@ import config
 
 ### Create AlphaTrade Object
 
-1. Create `AlphaTrade` object with your `login_id`, `password`, `2FA` and/or `access_token`.
+1. Create `AlphaTrade` object with your `login_id`, `password`, `TOTP` and/or `access_token`.
 
-Use `config` object to get `login_id`, `password`, `twofa` and `access_token`.  
+Use `config` object to get `login_id`, `password`, `TOTP` and `access_token`.  
 
 ```python
 from alphatrade import AlphaTrade
 import config
-sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.twofa, access_token=config.access_token)
+import pyotp
+Totp = config.Totp
+pin = pyotp.TOTP(Totp).now()
+totp = f"{int(pin):06d}" if len(pin) <=5 else pin   
+sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=totp, access_token=config.access_token)
+
 ```
 
 2. You can run commands here to check your connectivity
@@ -132,7 +137,7 @@ Getting master contracts allow you to search for instruments by symbol name and 
 Master contracts are stored as an OrderedDict by token number and by symbol name. Whenever you get a trade update, order update, or quote update, the library will check if master contracts are loaded. If they are, it will attach the instrument object directly to the update. By default all master contracts of all enabled exchanges in your personal profile will be downloaded. i.e. If your profile contains the following as enabled exchanges `['NSE', 'BSE', 'CDS', 'MCX', NFO']` all contract notes of all exchanges will be downloaded by default. If you feel it takes too much time to download all exchange, or if you don‘t need all exchanges to be downloaded, you can specify which exchange to download contract notes while creating the AlphaTrade object.
 
 ```python
-sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.twofa, access_token=config.access_token, master_contracts_to_download=['NSE', 'BSE'])
+sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=totp, access_token=config.access_token, master_contracts_to_download=['NSE', 'BSE'])
 ```
 
 This will reduce a few milliseconds in object creation time of AlphaTrade object.
@@ -701,8 +706,7 @@ Product types indicate the complexity of the order you want to place. Valid prod
 - Open the examples directory in your favorite editor, in our case it is [VSCodium](https://vscodium.com/)
 - Open the `sas_login_eg.py` file in the editor
 - Now, create `config.py` file as per instructions given below and in the above file
-- Provide correct login credentials like login_id, password and twofa
-- twofa must be same for all questions under two factor authentication
+- Provide correct login credentials like login_id, password and 16 digit totp code (find below qr code)
 - This is generally set from the homepage of alpha web trading platform [here](https://alpha.sasonline.in/)
 - Click on `FORGET PASSWORD?` => Select `Reset 2FA` radio button.  ![image](https://raw.githubusercontent.com/algo2t/alphatrade/main/snaps/forget_password.png)
 - Enter the CLIENT ID (LOGIN_ID), EMAIL ID and PAN NUMBER, click on `RESET` button.  ![image](https://raw.githubusercontent.com/algo2t/alphatrade/main/snaps/reset_two_fa.png)
@@ -711,16 +715,15 @@ Product types indicate the complexity of the order you want to place. Valid prod
 
 `config.py`
 ```python
-login_id = "RR249"
-password = "SAS@249"
-twofa = "rr"
+login_id = "XXXXX"
+password = "XXXXXXXX"
+Totp = 'XXXXXXXXXXXXXXXX'
 
 try:
     access_token = open('access_token.txt', 'r').read().rstrip()
 except Exception as e:
     print('Exception occurred :: {}'.format(e))
     access_token = None
-
 ```
 
 ## Example strategy using alpha trade API
