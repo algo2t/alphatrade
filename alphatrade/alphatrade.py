@@ -165,28 +165,29 @@ class AlphaTrade(object):
         'host': 'https://alpha.sasonline.in',
         'routes': {
             'login': '/api/v3/user/login',
-            #'checktwofa': '/api/v3/user/validatetotp'      #'/api/v3/checktwofa',
-            'profile': '/api/v2/profile',   #'/api/v1/user/profile'
-            'master_contract': '/api/v2/contracts.json?exchanges={exchange}',
-            'holdings': '/api/v2/holdings',
-            'balance': '/api/v2/cashposition',
-            'positions_daywise': '/api/v2/positions?type=daywise',
-            'positions_netwise': '/api/v2/positions?type=netwise',
-            'positions_holdings': '/api/v2/holdings',
-            'place_order': '/api/v2/order',
-            'place_amo': '/api/v2/amo',
-            'place_bracket_order': '/api/v2/bracketorder',
-            'place_basket_order': '/api/v2/basketorder',
-            'get_orders': '/api/v2/order',
-            'get_order_info': '/api/v2/order/{order_id}',
-            'modify_order': '/api/v2/order',
-            'cancel_order': '/api/v2/order?oms_order_id={order_id}&order_status=open',
-            'cancel_bo_order': '/api/v2/order?oms_order_id={order_id}&order_status=open&leg_order_indicator={leg_order_id}',
-            'cancel_co_order': '/api/v2/coverorder?oms_order_id={order_id}&order_status=open&leg_order_indicator={leg_order_id}',
-            'trade_book': '/api/v2/trade',
-            'scripinfo': '/api/v2/scripinfo?exchange={exchange}&instrument_token={token}',
+            'validatetotp': '/api/v3/user/validatetotp',
+            'profile': '/api/v1/user/profile',
+            'master_contract': '/api/v1/contract/{exchange}',
+            'holdings': '/api/v1/holdings',
+            'balance': '/api/v1/funds/view?type=all',
+            'positions_daywise': '/api/v1/positions?type=live',
+            'positions_netwise': '/api/v1/positions?type=historical',
+            'positions_holdings': '/api/v1/holdings',
+            'orders': '/api/v1/orders',
+            'place_order': '/api/v1/orders',
+            'place_amo': '/api/v1/orders/amo',
+            'place_bracket_order': '/api/v1/orders/bracket',
+            'place_basket_order': '/api/v1/orders/basket',
+            'get_orders': '/api/v1/orders',
+            'get_order_info': '/api/v1/order/{order_id}/history',
+            'modify_order': '/api/v1/orders',
+            'cancel_order': '/api/v1/order?oms_order_id={order_id}&order_status=open',
+            'cancel_bo_order': '/api/v1/order/bracket?oms_order_id={order_id}&order_status=open&leg_order_indicator={leg_order_id}',
+            'cancel_co_order': '/api/v1/order/cover?oms_order_id={order_id}&order_status=open&leg_order_indicator={leg_order_id}',
+            'trade_book': '/api/v1/trades',
+            'scripinfo': '/api/v1/contract/{exchange}?info=scrip&token={token}',
         },
-        'socket_endpoint': 'wss://alpha.sasonline.in/hydrasocket/v2/websocket?access_token={access_token}'
+        'socket_endpoint': 'wss://alpha.sasonline.in/socket/websocket?token={access_token}&login_id={login_id}'
     }
 
     _candletype = {1: 1, 2: 1, 3: 1, 5: 1, 10: 1, 15: 1,
@@ -476,7 +477,7 @@ class AlphaTrade(object):
         self.__dpr_callback = dpr_callback
 
         url = self.__service_config['socket_endpoint'].format(
-            access_token=self.__access_token)
+            access_token=self.__access_token, login_id=self.__login_id)
         self.__websocket = websocket.WebSocketApp(url,
                                                   on_data=self.__on_data_callback,
                                                   on_error=self.__on_error_callback,
