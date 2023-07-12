@@ -274,8 +274,8 @@ class AlphaTrade(object):
                 print('Exception occurred :: {}'.format(e))
                 self.__access_token = None
         self.__headers['X-Authorization-Token'] = self.__access_token
-        profile_url = 'https://alpha.sasonline.in/api/v3/profile'
-        resp = self.reqsession.get(profile_url, headers=self.__headers)
+        profile_url = 'https://alpha.sasonline.in/api/v1/user/profile'
+        resp = self.__api_call_helper('profile', Requests.GET, None, None)
         return resp.status_code == 200 and resp.json()['status'] == 'success'
 
     def __get_question_ids(self):
@@ -1005,8 +1005,7 @@ class AlphaTrade(object):
             placed in an OrderedDict and the key is the token
         """
         logger.info(f'Downloading master contracts for exchange: {exchange}')
-        body = self.__api_call_helper('master_contract', Requests.GET, {
-                                      'exchange': exchange}, None)
+        body = self.__api_call_helper('master_contract', Requests.GET, None, None)
         master_contract_by_token = OrderedDict()
         master_contract_by_symbol = OrderedDict()
         for sub in body:
@@ -1062,12 +1061,14 @@ class AlphaTrade(object):
             r = self.reqsession.post(
                 url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.DELETE:
+            url = url + "&client_id=" + self.__login_id
             r = self.reqsession.delete(url, headers=headers)
         elif http_method is Requests.PUT:
             r = self.reqsession.put(
                 url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.GET:
-            r = self.reqsession.get(url, headers=headers)        
+            url = url + "&client_id=" + self.__login_id
+            r = self.reqsession.get(url, headers=headers)
         return r
 
     def get_historical_candles(self, exchange, symbol, start_time, end_time, interval=5, is_index=False):
