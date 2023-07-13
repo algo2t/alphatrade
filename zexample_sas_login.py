@@ -12,16 +12,16 @@ import config
 #### config.py START ####
 # login_id = "RR"
 # password = "SAS@131"
-# twofa = "rr"
+# TOTP = "EXAMPLETOTPSECRET"
 
 # try:
-#     access_token = open('access_token.txt', 'r').read().rstrip()
+#     access_token = open('zaccess_token.txt', 'r').read().rstrip()
 # except Exception as e:
 #     print('Exception occurred :: {}'.format(e))
 #     access_token = None
 #### config.py END ####
 
-sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.twofa)
+sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.TOTP)
 
 # NOTE access_token can be supplied if already available
 # sas = AlphaTrade(login_id=config.login_id, password=config.password,
@@ -33,6 +33,6 @@ sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=confi
 
 
 print(sas.get_profile())
-usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR APR FUT')
+usd_inr = sas.get_instrument_by_symbol('NSE', 'PAYTM-EQ')
 print(usd_inr)
 print(sas.get_balance())

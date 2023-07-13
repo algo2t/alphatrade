@@ -9,9 +9,9 @@ from time import sleep
 from alphatrade import AlphaTrade, LiveFeedType
 
 sas = AlphaTrade(login_id=config.login_id, password=config.password,
-                 twofa=config.twofa, access_token=config.access_token, master_contracts_to_download=['MCX'])
+                 twofa=config.TOTP, access_token=config.access_token)
 
-ins_scrip = sas.get_instrument_by_symbol('MCX', 'NATURALGAS APR FUT')
+ins_scrip = sas.search('PAYTM-EQ', 'NSE')
 print(ins_scrip)
 
 ltp = 0.0
@@ -39,7 +39,7 @@ def run_strategy():
     sas.start_websocket(subscribe_callback=event_handler_quote_update,
                         socket_open_callback=open_callback,
                         run_in_background=True)
-    while(socket_opened == False):    # wait till socket open & then subscribe
+    while (socket_opened == False):    # wait till socket open & then subscribe
         pass
     sas.subscribe(ins_scrip, LiveFeedType.COMPACT)
     # sas.subscribe(ins_scrip, LiveFeedType.MARKET_DATA)
@@ -53,25 +53,25 @@ def run_strategy():
             # NOTE This is just an example to stop script without using `control + c` Keyboard Interrupt
             # It checks whether the stop.txt has word stop
             # This check is done every 30 seconds
-            stop_script = open('stop.txt', 'r').read().strip()
+            stop_script = open('zstop.txt', 'r').read().strip()
             print(stop_script + " time :: " + str(datetime.datetime.now()))
-            if(stop_script == 'stop'):
+            if (stop_script == 'stop'):
                 print('exiting script')
                 break
         # LTP is stored in the minute_close array and then mean is found on close to get SMA_5 and SMA_20
-        if(datetime.datetime.now().second == 0):    
+        if (datetime.datetime.now().second == 0):
             minute_close.append(ltp)
             print('current price is :: '+str(ltp))
-            if(len(minute_close) > 20):
+            if (len(minute_close) > 20):
                 sma_5 = statistics.mean(minute_close[-5:])
                 sma_20 = statistics.mean(minute_close[-20:])
                 print('current price is :: '+str(ltp))
-                if(sma_5 > sma_20) and (status != 'bought'):
+                if (sma_5 > sma_20) and (status != 'bought'):
                     # buy_signal(ins_scrip)
                     print('buy signal crossover :: ' + str(count_b))
                     status = 'bought'
                     count_b = count_b+1
-                elif(sma_5 < sma_20) and (status != 'sold'):
+                elif (sma_5 < sma_20) and (status != 'sold'):
                     # sell_signal(ins_scrip)
                     print('sell signal crossover :: ' + str(counts))
                     status = 'sold'

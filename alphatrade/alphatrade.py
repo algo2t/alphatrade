@@ -1,18 +1,18 @@
+from collections import namedtuple, OrderedDict
+from datetime import datetime, timedelta
+from protlib import CUInt, CStruct, CULong, CUChar, CArray, CUShort, CString
+
+import alphatrade.exceptions as ex
+import enum
+import logging
 import json
+import pandas as pd
+import pyotp
+import pytz
+from time import sleep
 import requests
 import threading
 import websocket
-import logging
-import enum
-from datetime import datetime, timedelta, date
-from time import sleep
-from collections import OrderedDict
-from protlib import CUInt, CStruct, CULong, CUChar, CArray, CUShort, CString
-from collections import namedtuple
-import pandas as pd
-import pytz
-import alphatrade.exceptions as ex
-
 
 Instrument = namedtuple('Instrument', ['exchange', 'token', 'symbol',
                                        'name', 'expiry', 'lot_size'])
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class Requests(enum.Enum):
+    """ Enum for all requests """
     PUT = 1
     DELETE = 2
     GET = 3
@@ -167,18 +168,18 @@ class AlphaTrade(object):
             'login': '/api/v3/user/login',
             'validatetotp': '/api/v3/user/validatetotp',
             'profile': '/api/v1/user/profile',
-            'master_contract': '/api/v1/contract/{exchange}',
+            'master_contract': '/api/v2/contracts.json?exchanges={exchange}',
             'holdings': '/api/v1/holdings',
             'balance': '/api/v1/funds/view?type=all',
+            'funds': '/api/v1/funds/view?type={fund_type}',
             'positions_daywise': '/api/v1/positions?type=live',
             'positions_netwise': '/api/v1/positions?type=historical',
             'positions_holdings': '/api/v1/holdings',
-            'orders': '/api/v1/orders',
             'place_order': '/api/v1/orders',
             'place_amo': '/api/v1/orders/amo',
             'place_bracket_order': '/api/v1/orders/bracket',
             'place_basket_order': '/api/v1/orders/basket',
-            'get_orders': '/api/v1/orders',
+            'orders': '/api/v1/orders?type={order_type}',
             'get_order_info': '/api/v1/order/{order_id}/history',
             'modify_order': '/api/v1/orders',
             'cancel_order': '/api/v1/order?oms_order_id={order_id}&order_status=open',
@@ -186,18 +187,25 @@ class AlphaTrade(object):
             'cancel_co_order': '/api/v1/order/cover?oms_order_id={order_id}&order_status=open&leg_order_indicator={leg_order_id}',
             'trade_book': '/api/v1/trades',
             'scripinfo': '/api/v1/contract/{exchange}?info=scrip&token={token}',
+            'contract': '/api/v1/contract/{exchange}',
+            'search': '/api/v1/search?key={symbol}',
+            'positions': '/api/v1/positions?type={position_type}',
         },
         'socket_endpoint': 'wss://alpha.sasonline.in/socket/websocket?token={access_token}&login_id={login_id}'
     }
 
-    _candletype = {1: 1, 2: 1, 3: 1, 5: 1, 10: 1, 15: 1,
-                   30: 1, 45: 1, '1H': 2, '2H': 2, '3H': 2, '4H': 2, '1D': 3, 'D': 3, 'W': 3, 'M': 3}
+    _candle_type = {1: 1, 2: 1, 3: 1, 5: 1, 10: 1, 15: 1,
+                    30: 1, 45: 1, '1H': 2, '2H': 2, '3H': 2, '4H': 2, '1D': 3, 'D': 3, 'W': 3, 'M': 3}
 
     _data_duration = {1: 1, 2: 2, 3: 3, 5: 5, 10: 10, 15: 15,
                       30: 30, 45: 45, '1H': None, '2H': 2, '3H': 2, '4H': 2, '1D': None, 'D': None, 'W': None, 'M': None}
 
-    def __init__(self, login_id, password, twofa, access_token=None, master_contracts_to_download=None):
+    def __init__(self, login_id, password, twofa, access_token=None):
         """ logs in and gets enabled exchanges and products for user """
+        if len(twofa) != 6:
+            pin = pyotp.TOTP(twofa).now()
+            twofa = f"{int(pin):06d}" if len(pin) <= 5 else pin
+
         self.__access_token = access_token
         self.__login_id = login_id
         self.__password = password
@@ -234,7 +242,7 @@ class AlphaTrade(object):
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36'
         }
 
-        self.reqsession = requests.session()
+        self.session = requests.session()
 
         if not self.__is_token_valid():
             self.__get_question_ids()
@@ -244,12 +252,12 @@ class AlphaTrade(object):
 
         try:
             profile = self.get_profile()
-        except Exception as e:
+        except Exception as exp:
             raise ex.PermissionException(
-                f"Couldn't get profile info with credentials provided '{e}'")
-        if(profile['status'] == 'error'):
+                f"Couldn't get profile info with credentials provided :: {exp}")
+        if (profile['status'] == 'error'):
             # Don't know why this error comes, but it safe to proceed further.
-            if(profile['message'] == 'Not able to retrieve AccountInfoService'):
+            if (profile['message'] == 'Not able to retrieve AccountInfoService'):
                 logger.warning(
                     "Couldn't get profile info - 'Not able to retrieve AccountInfoService'")
             else:
@@ -257,25 +265,20 @@ class AlphaTrade(object):
                     f"Couldn't get profile info '{profile['message']}'")
         self.__master_contracts_by_token = {}
         self.__master_contracts_by_symbol = {}
-        if(master_contracts_to_download == None):
-            for e in self.__enabled_exchanges:
-                self.__get_master_contract(e)
-        else:
-            for e in master_contracts_to_download:
-                self.__get_master_contract(e)
         self.ws_thread = None
 
     def __is_token_valid(self):
         if self.__access_token is None:
             try:
                 self.__access_token = open(
-                    'access_token.txt', 'r').read().rstrip()
-            except Exception as e:
-                print('Exception occurred :: {}'.format(e))
+                    'access_token.txt', 'r', encoding='utf-8').read().rstrip()
+            except FileNotFoundError:
+                print('File not found.')
                 self.__access_token = None
+                return False
         self.__headers['X-Authorization-Token'] = self.__access_token
         profile_url = 'https://alpha.sasonline.in/api/v1/user/profile'
-        resp = self.__api_call_helper('profile', Requests.GET, None, None)
+        resp = self.session.get(profile_url, headers=self.__headers)
         return resp.status_code == 200 and resp.json()['status'] == 'success'
 
     def __get_question_ids(self):
@@ -284,30 +287,29 @@ class AlphaTrade(object):
             'login_id': self.__login_id,
             'password': self.__password
         }
-        response = self.reqsession.post(
+        response = self.session.post(
             'https://alpha.sasonline.in/api/v3/user/login', json=login_body)
-        
+
         if response.status_code != 200:
             raise requests.HTTPError(response.text)
         if 'error' in response.text:
             raise requests.HTTPError(response.text)
-        question_ids = response.json()['data']['twofa']['questions'][0]['question_id'] #['data']['question_ids']        
         twofa_token = response.json()['data']['twofa']['twofa_token']
-        self.__question_ids = question_ids
         self.__twofa_token = twofa_token
-    def __set_access_token(self):        
-        twofa_body = {"login_id":self.__login_id,
-        "twofa_token":self.__twofa_token,
-        "totp":self.__twofa}        
-        response = self.reqsession.post(
-            'https://alpha.sasonline.in/api/v3/user/validatetotp', json=twofa_body)        
+
+    def __set_access_token(self):
+        twofa_body = {"login_id": self.__login_id,
+                      "twofa_token": self.__twofa_token,
+                      "totp": self.__twofa}
+        response = self.session.post(
+            'https://alpha.sasonline.in/api/v3/user/validatetotp', json=twofa_body)
         if response.status_code != 200:
             raise requests.HTTPError(response.text)
         if 'error' in response.text:
             raise requests.HTTPError(response.text)
         auth_token = response.json()['data']['auth_token']
 
-        with open('access_token.txt', 'w') as wr:
+        with open('access_token.txt', 'w', encoding='utf-8') as wr:
             wr.write(auth_token)
 
         self.__access_token = auth_token
@@ -325,11 +327,11 @@ class AlphaTrade(object):
                 'yearly_high',
                 'yearly_low']
         for key in keys:
-            if(key in dictionary):
+            if (key in dictionary):
                 dictionary[key] = dictionary[key]/multiplier
         multiple_value_keys = ['bid_prices', 'ask_prices']
         for key in multiple_value_keys:
-            if(key in dictionary):
+            if (key in dictionary):
                 new_values = []
                 for value in dictionary[key]:
                     new_values.append(value/multiplier)
@@ -350,14 +352,14 @@ class AlphaTrade(object):
         return df
 
     def __convert_exchanges(self, dictionary):
-        if('exchange' in dictionary):
+        if ('exchange' in dictionary):
             d = self.__exchange_codes
             dictionary['exchange'] = list(d.keys())[list(
                 d.values()).index(dictionary['exchange'])]
         return dictionary
 
     def __convert_instrument(self, dictionary):
-        if('exchange' in dictionary) and ('token' in dictionary):
+        if ('exchange' in dictionary) and ('token' in dictionary):
             dictionary['instrument'] = self.get_instrument_by_token(
                 dictionary['exchange'], dictionary['token'])
         return dictionary
@@ -369,50 +371,53 @@ class AlphaTrade(object):
         dictionary = self.__convert_instrument(dictionary)
         return dictionary
 
-    def __on_data_callback(self, ws=None, message=None, data_type=None, continue_flag=None):
-        if(type(ws) is not websocket.WebSocketApp):  # This workaround is to solve the websocket_client's compatibility issue of older versions. ie.0.40.0 which is used in upstox. Now this will work in both 0.40.0 & newer version of websocket_client
-            message = ws            
-        if(message[0] == WsFrameMode.MARKETDATA):
+    def __on_data_callback(self, ws=None, message=None):
+        # This workaround is to solve the websocket_client's compatibility
+        # issue of older versions. ie.0.40.0 which is used in Upstox.
+        # Now this will work in both 0.40.0 & newer version of websocket_client
+        if (isinstance(ws, websocket.WebSocketApp) is not True):
+            message = ws
+        if (message[0] == WsFrameMode.MARKETDATA):
             p = MarketData.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
-            if(self.__subscribe_callback is not None):
+            if (self.__subscribe_callback is not None):
                 self.__subscribe_callback(res)
-        elif(message[0] == WsFrameMode.COMPACT_MARKETDATA):
+        elif (message[0] == WsFrameMode.COMPACT_MARKETDATA):
             p = CompactData.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
-            if(self.__subscribe_callback is not None):
+            if (self.__subscribe_callback is not None):
                 self.__subscribe_callback(res)
-        elif(message[0] == WsFrameMode.SNAPQUOTE):
+        elif (message[0] == WsFrameMode.SNAPQUOTE):
             p = SnapQuote.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
-            if(self.__subscribe_callback is not None):
+            if (self.__subscribe_callback is not None):
                 self.__subscribe_callback(res)
-        elif(message[0] == WsFrameMode.FULL_SNAPQUOTE):
+        elif (message[0] == WsFrameMode.FULL_SNAPQUOTE):
             p = FullSnapQuote.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
-            if(self.__subscribe_callback is not None):
+            if (self.__subscribe_callback is not None):
                 self.__subscribe_callback(res)
-        elif(message[0] == WsFrameMode.DPR):
+        elif (message[0] == WsFrameMode.DPR):
             p = DPR.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
-            if(self.__dpr_callback is not None):
+            if (self.__dpr_callback is not None):
                 self.__dpr_callback(res)
-        elif(message[0] == WsFrameMode.OI):
+        elif (message[0] == WsFrameMode.OI):
             p = OpenInterest.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
-            if(self.__oi_callback is not None):
+            if (self.__oi_callback is not None):
                 self.__oi_callback(res)
-        elif(message[0] == WsFrameMode.MARKET_STATUS):
+        elif (message[0] == WsFrameMode.MARKET_STATUS):
             p = MarketStatus.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
             self.__market_status_messages.append(res)
-            if(self.__market_status_messages_callback is not None):
+            if (self.__market_status_messages_callback is not None):
                 self.__market_status_messages_callback(res)
-        elif(message[0] == WsFrameMode.EXCHANGE_MESSAGES):
+        elif (message[0] == WsFrameMode.EXCHANGE_MESSAGES):
             p = ExchangeMessage.parse(message[1:]).__dict__
             res = self.__modify_human_readable_values(p)
             self.__exchange_messages.append(res)
-            if(self.__exchange_messages_callback is not None):
+            if (self.__exchange_messages_callback is not None):
                 self.__exchange_messages_callback(res)
 
     def __on_close_callback(self, ws=None):
@@ -427,7 +432,8 @@ class AlphaTrade(object):
             self.__on_open()
 
     def __on_error_callback(self, ws=None, error=None):
-        if(type(ws) is not websocket.WebSocketApp):  # This workaround is to solve the websocket_client's compatibility issue of older versions. ie.0.40.0 which is used in upstox. Now this will work in both 0.40.0 & newer version of websocket_client
+        # This workaround is to solve the websocket_client's compatibility issue of older versions. ie.0.40.0 which is used in upstox. Now this will work in both 0.40.0 & newer version of websocket_client
+        if (isinstance(ws, websocket.WebSocketApp) is not True):
             error = ws
         if self.__on_error:
             self.__on_error(error)
@@ -443,9 +449,9 @@ class AlphaTrade(object):
         while True:
             try:
                 self.__websocket.run_forever()
-            except Exception as e:
+            except Exception as exp:
                 logger.warning(
-                    f"websocket run forever ended in exception, {e}")
+                    f"websocket run forever ended in exception, {exp}")
             sleep(0.1)  # Sleep for 100ms between reconnection.
 
     def __ws_send(self, *args, **kwargs):
@@ -496,8 +502,8 @@ class AlphaTrade(object):
     def get_profile(self):
         """ Get profile """
         profile = self.__api_call_helper('profile', Requests.GET, None, None)
-        if(profile['status'] != 'error'):
-            self.__enabled_exchanges = profile['data']['exchanges']
+        if (profile['status'] != 'error'):
+            self.__enabled_exchanges = profile['data']['exchanges_subscribed']
         return profile
 
     def get_balance(self):
@@ -516,10 +522,47 @@ class AlphaTrade(object):
         """ Get holding positions """
         return self.__api_call_helper('positions_holdings', Requests.GET, None, None)
 
+    def positions(self, position_type='live'):
+        """ get all positions """
+        params = {'position_type': position_type}
+        return self.__api_call_helper('positions', Requests.GET, params, None)
+
+    def orders(self, order_type='complete'):
+        """ get all orders """
+        params = {'order_type': order_type}
+        return self.__api_call_helper('orders', Requests.GET, params, None)
+
+    def funds(self, fund_type='all'):
+        """ get all funds """
+        params = {'fund_type': fund_type}
+        return self.__api_call_helper('funds', Requests.GET, params, None)
+
+    def __to_instrument(self, scrip):
+        """ Convert scrip to instrument """
+        print(scrip)
+        instrument = Instrument(scrip['exchange'], int(scrip['token']), 
+                          scrip['trading_symbol'], 
+                          scrip['company'], None, 1)
+        print(isinstance(instrument, Instrument))
+        print(instrument)
+        return instrument
+        
+    
+    def search(self, symbol='Nifty Bank', exchange='NSE'):
+        """ search for scrips """
+        params = {'symbol': symbol}
+        data = self.__api_call_helper('search', Requests.GET, params, None)
+        scrips = data['result']
+
+        for scrip in scrips:
+            print(scrip)
+            if scrip['exchange'] == exchange and scrip['trading_symbol'] == symbol:
+                return self.__to_instrument(scrip)
+
     def get_order_history(self, order_id=None):
         """ leave order_id as None to get all entire order history """
         if order_id is None:
-            return self.__api_call_helper('get_orders', Requests.GET, None, None)
+            return self.orders()
         else:
             return self.__api_call_helper('get_order_info', Requests.GET, {'order_id': order_id}, None)
 
@@ -542,9 +585,9 @@ class AlphaTrade(object):
             prod_type = 'MIS'
         elif product_type == ProductType.Delivery:
             prod_type = 'NRML' if exchange in ['NFO', 'MCX', 'CDS'] else 'CNC'
-        elif(product_type == ProductType.CoverOrder):
+        elif (product_type == ProductType.CoverOrder):
             prod_type = 'CO'
-        elif(product_type == ProductType.BracketOrder):
+        elif (product_type == ProductType.BracketOrder):
             prod_type = None
         return prod_type
 
@@ -755,9 +798,9 @@ class AlphaTrade(object):
             product_type = 'MIS'
         elif product_type == ProductType.Delivery:
             product_type = 'NRML' if (instrument.exchange == 'NFO') else 'CNC'
-        elif(product_type == ProductType.CoverOrder):
+        elif (product_type == ProductType.CoverOrder):
             product_type = 'CO'
-        elif(product_type == ProductType.BracketOrder):
+        elif (product_type == ProductType.BracketOrder):
             product_type = None
         # construct order object with order id
         order = {'oms_order_id': str(order_id),
@@ -795,10 +838,10 @@ class AlphaTrade(object):
         if not orders:
             return
         for c_order in orders['pending_orders']:
-            if(c_order['product'] == 'BO' and c_order['leg_order_indicator']):
+            if (c_order['product'] == 'BO' and c_order['leg_order_indicator']):
                 r = self.cancel_order(
                     c_order['leg_order_indicator'], leg_order_id=c_order['leg_order_indicator'])
-            elif(c_order['product'] == 'CO'):
+            elif (c_order['product'] == 'CO'):
                 r = self.cancel_order(
                     c_order['oms_order_id'], leg_order_id=c_order['leg_order_indicator'], is_co=True)
             else:
@@ -824,7 +867,7 @@ class AlphaTrade(object):
 
     def subscribe(self, instrument, live_feed_type):
         """ subscribe to the current feed of an instrument """
-        if(type(live_feed_type) is not LiveFeedType):
+        if (type(live_feed_type) is not LiveFeedType):
             raise TypeError(
                 "Required parameter live_feed_type not of type LiveFeedType")
         arr = []
@@ -843,20 +886,20 @@ class AlphaTrade(object):
             exchange = self.__exchange_codes[instrument.exchange]
             arr = [[exchange, int(instrument.token)]]
             self.__subscribers[instrument] = live_feed_type
-        if(live_feed_type == LiveFeedType.MARKET_DATA):
+        if (live_feed_type == LiveFeedType.MARKET_DATA):
             mode = 'marketdata'
-        elif(live_feed_type == LiveFeedType.COMPACT):
+        elif (live_feed_type == LiveFeedType.COMPACT):
             mode = 'compact_marketdata'
-        elif(live_feed_type == LiveFeedType.SNAPQUOTE):
+        elif (live_feed_type == LiveFeedType.SNAPQUOTE):
             mode = 'snapquote'
-        elif(live_feed_type == LiveFeedType.FULL_SNAPQUOTE):
+        elif (live_feed_type == LiveFeedType.FULL_SNAPQUOTE):
             mode = 'full_snapquote'
         data = json.dumps({'a': 'subscribe', 'v': arr, 'm': mode})
         return self.__ws_send(data)
 
     def unsubscribe(self, instrument, live_feed_type):
         """ unsubscribe to the current feed of an instrument """
-        if(type(live_feed_type) is not LiveFeedType):
+        if (type(live_feed_type) is not LiveFeedType):
             raise TypeError(
                 "Required parameter live_feed_type not of type LiveFeedType")
         arr = []
@@ -867,7 +910,7 @@ class AlphaTrade(object):
                         "Required parameter instrument not of type Instrument")
                 exchange = self.__exchange_codes[_instrument.exchange]
                 arr.append([exchange, int(_instrument.token)])
-                if(_instrument in self.__subscribers):
+                if (_instrument in self.__subscribers):
                     del self.__subscribers[_instrument]
         else:
             if not isinstance(instrument, Instrument):
@@ -875,15 +918,15 @@ class AlphaTrade(object):
                     "Required parameter instrument not of type Instrument")
             exchange = self.__exchange_codes[instrument.exchange]
             arr = [[exchange, int(instrument.token)]]
-            if(instrument in self.__subscribers):
+            if (instrument in self.__subscribers):
                 del self.__subscribers[instrument]
-        if(live_feed_type == LiveFeedType.MARKET_DATA):
+        if (live_feed_type == LiveFeedType.MARKET_DATA):
             mode = 'marketdata'
-        elif(live_feed_type == LiveFeedType.COMPACT):
+        elif (live_feed_type == LiveFeedType.COMPACT):
             mode = 'compact_marketdata'
-        elif(live_feed_type == LiveFeedType.SNAPQUOTE):
+        elif (live_feed_type == LiveFeedType.SNAPQUOTE):
             mode = 'snapquote'
-        elif(live_feed_type == LiveFeedType.FULL_SNAPQUOTE):
+        elif (live_feed_type == LiveFeedType.FULL_SNAPQUOTE):
             mode = 'full_snapquote'
 
         data = json.dumps({'a': 'unsubscribe', 'v': arr, 'm': mode})
@@ -899,13 +942,13 @@ class AlphaTrade(object):
         snap = []
         full = []
         for key, value in self.get_all_subscriptions().items():
-            if(value == LiveFeedType.MARKET_DATA):
+            if (value == LiveFeedType.MARKET_DATA):
                 market.append(key)
-            elif(value == LiveFeedType.COMPACT):
+            elif (value == LiveFeedType.COMPACT):
                 compact.append(key)
-            elif(value == LiveFeedType.SNAPQUOTE):
+            elif (value == LiveFeedType.SNAPQUOTE):
                 snap.append(key)
-            elif(value == LiveFeedType.FULL_SNAPQUOTE):
+            elif (value == LiveFeedType.FULL_SNAPQUOTE):
                 full.append(key)
         if market:
             self.subscribe(market, LiveFeedType.MARKET_DATA)
@@ -935,27 +978,27 @@ class AlphaTrade(object):
     def get_instrument_for_fno(self, symbol, expiry_date, is_fut=False, strike=None, is_call=False, exchange='NFO'):
         """ get instrument for FNO """
         res = self.search_instruments(exchange, symbol)
-        if(res == None):
+        if (res == None):
             return
         matches = []
         for i in res:
             sp = i.symbol.split(' ')
-            if(sp[0] == symbol):
-                if(i.expiry == expiry_date):
+            if (sp[0] == symbol):
+                if (i.expiry == expiry_date):
                     matches.append(i)
         for i in matches:
-            if(is_fut == True):
-                if('FUT' in i.symbol):
+            if (is_fut == True):
+                if ('FUT' in i.symbol):
                     return i
             else:
                 sp = i.symbol.split(' ')
-                if((sp[-1] == 'CE') or (sp[-1] == 'PE')):           # Only option scrips
-                    if(float(sp[-2]) == float(strike)):
-                        if(is_call == True):
-                            if(sp[-1] == 'CE'):
+                if ((sp[-1] == 'CE') or (sp[-1] == 'PE')):           # Only option scrips
+                    if (float(sp[-2]) == float(strike)):
+                        if (is_call == True):
+                            if (sp[-1] == 'CE'):
                                 return i
                         else:
-                            if(sp[-1] == 'PE'):
+                            if (sp[-1] == 'PE'):
                                 return i
 
     def search_instruments(self, exchange, symbol):
@@ -984,17 +1027,7 @@ class AlphaTrade(object):
         # get instrument given exchange and token
         exchange = exchange.upper()
         token = int(token)
-        # check if master contract exists
-        if exchange not in self.__master_contracts_by_symbol:
-            logger.warning(f"Cannot find exchange {exchange} in master contract. "
-                           "Please ensure if that exchange is enabled in your profile and downloaded the master contract for the same")
-            return None
-        master_contract = self.__master_contracts_by_token[exchange]
-        if token not in master_contract:
-            logger.warning(
-                f"Cannot find symbol {exchange} {token} in master contract")
-            return None
-        return master_contract[token]
+        
 
     def get_master_contract(self, exchange):
         """ Get master contract """
@@ -1004,8 +1037,10 @@ class AlphaTrade(object):
         """ returns all the tradable contracts of an exchange
             placed in an OrderedDict and the key is the token
         """
-        logger.info(f'Downloading master contracts for exchange: {exchange}')
-        body = self.__api_call_helper('master_contract', Requests.GET, None, None)
+        print(f'Downloading master contracts for exchange: {exchange}')
+        body = self.__api_call_helper(
+            'master_contract', Requests.GET, None, None)
+        print(body)
         master_contract_by_token = OrderedDict()
         master_contract_by_symbol = OrderedDict()
         for sub in body:
@@ -1017,7 +1052,7 @@ class AlphaTrade(object):
                 symbol = scrip['symbol']
 
                 # convert expiry to none if it's non-existent
-                if('expiry' in scrip):
+                if ('expiry' in scrip):
                     expiry = datetime.fromtimestamp(
                         scrip['expiry']).date()
                 else:
@@ -1042,15 +1077,16 @@ class AlphaTrade(object):
         url = f"{config['host']}{config['routes'][name]}"
         if params is not None:
             url = url.format(**params)
+
         response = self.__api_call(url, http_method, data)
-        if response.status_code != 200:            
+        if response.status_code != 200:
             raise requests.HTTPError(response.text)
         return json.loads(response.text)
 
     def __api_call(self, url, http_method, data):
-        # logger.debug('url:: %s http_method:: %s data:: %s headers:: %s', url, http_method, data, headers)        
+        # logger.debug('url:: %s http_method:: %s data:: %s headers:: %s', url, http_method, data, headers)
         headers = {"Content-Type": "application/json"}
-        if(len(self.__access_token) > 100):
+        if (len(self.__access_token) > 100):
             headers['X-Authorization-Token'] = self.__access_token
             headers['Connection'] = 'keep-alive'
         else:
@@ -1058,17 +1094,16 @@ class AlphaTrade(object):
             headers['authorization'] = f"Bearer {self.__access_token}"
         r = None
         if http_method is Requests.POST:
-            r = self.reqsession.post(
+            r = self.session.post(
                 url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.DELETE:
-            url = url + "&client_id=" + self.__login_id
-            r = self.reqsession.delete(url, headers=headers)
+            r = self.session.delete(url, headers=headers)
         elif http_method is Requests.PUT:
-            r = self.reqsession.put(
+            r = self.session.put(
                 url, data=json.dumps(data), headers=headers)
         elif http_method is Requests.GET:
-            url = url + "&client_id=" + self.__login_id
-            r = self.reqsession.get(url, headers=headers)
+            params = {'client_id': self.__login_id}
+            r = self.session.get(url, params=params, headers=headers)
         return r
 
     def get_historical_candles(self, exchange, symbol, start_time, end_time, interval=5, is_index=False):
@@ -1093,7 +1128,7 @@ class AlphaTrade(object):
             'token': instrument.token
         }
 
-        r = self.reqsession.get(
+        r = self.session.get(
             'https://alpha.sasonline.in/api/v1/charts', params=PARAMS, headers=self.__headers)
         data = r.json()
         return self.__format_candles(data, divider)
@@ -1125,7 +1160,7 @@ class AlphaTrade(object):
             'token': instrument.token
         }
 
-        r = self.reqsession.get(
+        r = self.session.get(
             'https://alpha.sasonline.in/api/v1/charts', params=PARAMS, headers=self.__headers)
         data = r.json()
         return self.__format_candles(data, divider)
@@ -1149,7 +1184,11 @@ class AlphaTrade(object):
         return data.json()
 
     def get_total_m2m(self):
-        data = self.get_netwise_positions()
+        """ Returns the total m2m of all positions.
+        Returns:
+            float: Total m2m of all positions.
+        """
+        data = self.positions(position_type='live')
         if data['status'] != 'success':
             return None
         else:
@@ -1186,7 +1225,7 @@ class AlphaTrade(object):
         if is_index:
             exchange = 'NSE_INDICES'
 
-        candle_type = self._candletype[interval]
+        candle_type = self._candle_type[interval]
 
         data_duration = self._data_duration[interval]
 
@@ -1208,6 +1247,6 @@ class AlphaTrade(object):
             'Accept': 'application/json'
         }
         r = requests.get(
-            'https://ant.aliceblueonline.com/api/v1/charts/tdv', params=PARAMS, headers=headers)
+            'https://alpha.sasonline.in/api/v1/charts/tdv', params=PARAMS, headers=headers)
         data = r.json()
         return self._format_candles(data, interval)

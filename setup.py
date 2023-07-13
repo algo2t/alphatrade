@@ -6,7 +6,7 @@ with open('README.md', 'r') as fh:
 setuptools.setup(
     name='alphatrade',
     packages=setuptools.find_packages(),
-    version='0.1.3',
+    version='1.0.0',
     include_package_data=True,
     description='Python APIs for SAS Online Alpha Trade Web Platform',
     long_description=long_description,
@@ -16,7 +16,7 @@ setuptools.setup(
     install_requires=['requests', 'websocket_client', 'protlib', 'pandas','pyotp'],
     keywords=['alphatrade', 'alpha-trade', 'sasonline',
               'python', 'sdk', 'trading', 'stock markets'],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -24,12 +24,10 @@ setuptools.setup(
         'Natural Language :: English',
         'Operating System :: OS Independent',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Software Development :: Libraries'

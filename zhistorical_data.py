@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from alphatrade import AlphaTrade
 
-import config
+import examples.config as config
 
 sas = AlphaTrade(login_id=config.login_id,
                  password=config.password, twofa=config.twofa)
