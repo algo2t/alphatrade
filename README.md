@@ -9,6 +9,7 @@
 3. Added new search function to search scrips which will return json for found scrips, you need to process it further
 4. More functions to come.
 5. Check whether streaming websocket is working or not
+6. The `examples` folder is removed and examples are renamed and kept in root directory for ease of development
 
 # STEPS to work
 
@@ -128,7 +129,7 @@ import config
 
 ### Create AlphaTrade Object
 
-1. Create `AlphaTrade` object with your `login_id`, `password`, `TOTP` and/or `access_token`.
+1. Create `AlphaTrade` object with your `login_id`, `password`, `TOTP` / `TOTP_SECRET` and/or `access_token`.
 
 Use `config` object to get `login_id`, `password`, `TOTP` and `access_token`.  
 
@@ -142,6 +143,31 @@ totp = f"{int(pin):06d}" if len(pin) <=5 else pin
 sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=totp, access_token=config.access_token)
 
 ```
+
+```python
+## filename config.py
+
+login_id = "RR24XX"
+password = "SuperSecretPassword!!!"
+TOTP_SECRET = 'YOURTOTPSECRETEXTERNALAUTH'
+
+try:
+    access_token = open('access_token.txt', 'r').read().rstrip()
+except Exception as e:
+    print(f'Exception occurred :: {e}')
+    access_token = None
+
+```
+
+
+```python
+from alphatrade import AlphaTrade
+import config
+import pyotp
+sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=config.TOTP_SECRET, access_token=config.access_token)
+
+```
+
 
 2. You can run commands here to check your connectivity
 
@@ -718,7 +744,7 @@ Product types indicate the complexity of the order you want to place. Valid prod
 
 ## Working with examples
 
-[Here](https://github.com/algo2t/alphatrade/tree/main/examples), examples directory there are 3 files `sas_login_eg.py`, `streaming_data.py` and `stop.txt`
+[Here](https://github.com/algo2t/alphatrade), examples directory there are 3 files `zlogin_example.py`, `zstreaming_data.py` and `stop.txt`
 
 ### Steps
 
@@ -726,7 +752,7 @@ Product types indicate the complexity of the order you want to place. Valid prod
 - Copy the examples directory to any location where you want to write your code
 - Install the `alphatrade` module using `pip` => `python -m pip install https://github.com/algo2t/alphatrade.git`
 - Open the examples directory in your favorite editor, in our case it is [VSCodium](https://vscodium.com/)
-- Open the `sas_login_eg.py` file in the editor
+- Open the `zlogin_example.py` file in the editor
 - Now, create `config.py` file as per instructions given below and in the above file
 - Provide correct login credentials like login_id, password and 16 digit totp code (find below qr code)
 - This is generally set from the homepage of alpha web trading platform [here](https://alpha.sasonline.in/)
@@ -750,15 +776,15 @@ except Exception as e:
 
 ## Example strategy using alpha trade API
 
-[Here](https://github.com/algo2t/alphatrade/blob/main/examples/streaming_data.py) is an example moving average strategy using alpha trade web API.
+[Here](https://github.com/algo2t/alphatrade/blob/main/zstreaming_data.py) is an example moving average strategy using alpha trade web API.
 This strategy generates a buy signal when 5-EMA > 20-EMA (golden cross) or a sell signal when 5-EMA < 20-EMA (death cross).
 
 ## Example for getting historical and intraday candles data
 
-[Here](https://github.com/algo2t/alphatrade/blob/main/examples/historical_data.py) is an example for getting historical data using alpha trade web API.
+[Here](https://github.com/algo2t/alphatrade/blob/main/zhistorical_data.py) is an example for getting historical data using alpha trade web API.
 
 For historical candles data `start_time` and `end_time` must be provided in format as shown below.
-It can also be provided as `timedelta`. Check the script `historical_data.py` in examples.
+It can also be provided as `timedelta`. Check the script `zhistorical_data.py` in examples.
 
 ```python
 from datetime import datetime, timedelta
