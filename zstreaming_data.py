@@ -9,9 +9,11 @@ from time import sleep
 from alphatrade import AlphaTrade, LiveFeedType
 
 sas = AlphaTrade(login_id=config.login_id, password=config.password,
-                 twofa=config.TOTP, access_token=config.access_token)
+                 twofa=config.TOTP, access_token=config.access_token, master_contracts_to_download=['NSE', 'NFO'])
 
-ins_scrip = sas.search('PAYTM-EQ', 'NSE')
+
+ins_scrip = sas.get_instrument_by_symbol('NSE', 'PAYTM')
+
 print(ins_scrip)
 
 ltp = 0.0
@@ -22,7 +24,7 @@ count_b = 0
 
 def event_handler_quote_update(message):
     global ltp
-    ltp = message['ltp']
+    # ltp = message['ltp']
     # tick = json.loads(message, indent=1)
     print(f'ticks :: {message}')
 
@@ -39,12 +41,12 @@ def run_strategy():
     sas.start_websocket(subscribe_callback=event_handler_quote_update,
                         socket_open_callback=open_callback,
                         run_in_background=True)
-    while (socket_opened == False):    # wait till socket open & then subscribe
+    while (socket_opened is False):    # wait till socket open & then subscribe
         pass
-    sas.subscribe(ins_scrip, LiveFeedType.COMPACT)
+    # sas.subscribe(ins_scrip, LiveFeedType.COMPACT)
     # sas.subscribe(ins_scrip, LiveFeedType.MARKET_DATA)
     # sas.subscribe(ins_scrip, LiveFeedType.SNAPQUOTE)
-    # sas.subscribe(ins_scrip, LiveFeedType.FULL_SNAPQUOTE)
+    sas.subscribe(ins_scrip, LiveFeedType.FULL_SNAPQUOTE)
 
     print("Script Start Time :: " + str(datetime.datetime.now()))
     while True:

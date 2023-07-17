@@ -191,7 +191,8 @@ class AlphaTrade(object):
             'search': '/api/v1/search?key={symbol}',
             'positions': '/api/v1/positions?type={position_type}',
         },
-        'socket_endpoint': 'wss://alpha.sasonline.in/socket/websocket?token={access_token}&login_id={login_id}'
+        # 'socket_endpoint': 'wss://alpha.sasonline.in/socket/websocket?token={access_token}&login_id={login_id}'
+        'socket_endpoint': 'wss://alpha.sasonline.in/hydrasocket/v2/websocket?access_token={access_token}'
     }
 
     _candle_type = {1: 1, 2: 1, 3: 1, 5: 1, 10: 1, 15: 1,
@@ -200,7 +201,7 @@ class AlphaTrade(object):
     _data_duration = {1: 1, 2: 2, 3: 3, 5: 5, 10: 10, 15: 15,
                       30: 30, 45: 45, '1H': None, '2H': 2, '3H': 2, '4H': 2, '1D': None, 'D': None, 'W': None, 'M': None}
 
-    def __init__(self, login_id, password, twofa, access_token=None):
+    def __init__(self, login_id, password, twofa, access_token=None, master_contracts_to_download=None):
         """ logs in and gets enabled exchanges and products for user """
         if len(twofa) != 6:
             pin = pyotp.TOTP(twofa).now()
@@ -265,6 +266,12 @@ class AlphaTrade(object):
                     f"Couldn't get profile info '{profile['message']}'")
         self.__master_contracts_by_token = {}
         self.__master_contracts_by_symbol = {}
+        if (master_contracts_to_download is None):
+            for e in self.__enabled_exchanges:
+                self.__get_master_contract(e)
+        else:
+            for e in master_contracts_to_download:
+                self.__get_master_contract(e)
         self.ws_thread = None
 
     def __is_token_valid(self):
@@ -375,7 +382,7 @@ class AlphaTrade(object):
         # This workaround is to solve the websocket_client's compatibility
         # issue of older versions. ie.0.40.0 which is used in Upstox.
         # Now this will work in both 0.40.0 & newer version of websocket_client
-        if (isinstance(ws, websocket.WebSocketApp) is not True):
+        if not isinstance(ws, websocket.WebSocketApp):
             message = ws
         if (message[0] == WsFrameMode.MARKETDATA):
             p = MarketData.parse(message[1:]).__dict__
@@ -483,7 +490,7 @@ class AlphaTrade(object):
         self.__dpr_callback = dpr_callback
 
         url = self.__service_config['socket_endpoint'].format(
-            access_token=self.__access_token, login_id=self.__login_id)
+            access_token=self.__access_token)
         self.__websocket = websocket.WebSocketApp(url,
                                                   on_data=self.__on_data_callback,
                                                   on_error=self.__on_error_callback,
@@ -537,27 +544,27 @@ class AlphaTrade(object):
         params = {'fund_type': fund_type}
         return self.__api_call_helper('funds', Requests.GET, params, None)
 
-    def __to_instrument(self, scrip):
-        """ Convert scrip to instrument """
-        print(scrip)
-        instrument = Instrument(scrip['exchange'], int(scrip['token']), 
-                          scrip['trading_symbol'], 
-                          scrip['company'], None, 1)
-        print(isinstance(instrument, Instrument))
-        print(instrument)
-        return instrument
+    # def __to_instrument(self, scrip):
+    #     """ Convert scrip to instrument """
+    #     print(scrip)
+    #     instrument = Instrument(scrip['exchange'], int(scrip['token']), 
+    #                       scrip['trading_symbol'], 
+    #                       scrip['company'], None, 1)
+    #     print(isinstance(instrument, Instrument))
+    #     print(instrument)
+    #     return instrument
         
     
-    def search(self, symbol='Nifty Bank', exchange='NSE'):
-        """ search for scrips """
-        params = {'symbol': symbol}
-        data = self.__api_call_helper('search', Requests.GET, params, None)
-        scrips = data['result']
+    # def search(self, symbol='Nifty Bank', exchange='NSE'):
+    #     """ search for scrips """
+    #     params = {'symbol': symbol}
+    #     data = self.__api_call_helper('search', Requests.GET, params, None)
+    #     scrips = data['result']
 
-        for scrip in scrips:
-            print(scrip)
-            if scrip['exchange'] == exchange and scrip['trading_symbol'] == symbol:
-                return self.__to_instrument(scrip)
+    #     for scrip in scrips:
+    #         print(scrip)
+    #         if scrip['exchange'] == exchange and scrip['trading_symbol'] == symbol:
+    #             return self.__to_instrument(scrip)
 
     def get_order_history(self, order_id=None):
         """ leave order_id as None to get all entire order history """
@@ -1039,8 +1046,7 @@ class AlphaTrade(object):
         """
         print(f'Downloading master contracts for exchange: {exchange}')
         body = self.__api_call_helper(
-            'master_contract', Requests.GET, None, None)
-        print(body)
+            'master_contract', Requests.GET, {'exchange': exchange}, None)
         master_contract_by_token = OrderedDict()
         master_contract_by_symbol = OrderedDict()
         for sub in body:
