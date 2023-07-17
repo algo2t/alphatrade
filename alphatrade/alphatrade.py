@@ -267,7 +267,8 @@ class AlphaTrade(object):
         self.__master_contracts_by_token = {}
         self.__master_contracts_by_symbol = {}
         if (master_contracts_to_download is None):
-            for e in self.__enabled_exchanges:
+            # for e in self.__enabled_exchanges:
+            for e in ['NSE', 'NFO', 'CDS', 'BSE', 'BFO', 'MCX']:
                 self.__get_master_contract(e)
         else:
             for e in master_contracts_to_download:
@@ -510,7 +511,8 @@ class AlphaTrade(object):
         """ Get profile """
         profile = self.__api_call_helper('profile', Requests.GET, None, None)
         if (profile['status'] != 'error'):
-            self.__enabled_exchanges = profile['data']['exchanges_subscribed']
+            # self.__enabled_exchanges = profile['data']['exchanges_subscribed']
+            self.__enabled_exchanges = ['NSE', 'MCX', 'NFO', 'BSE', 'BFO', 'CDS']
         return profile
 
     def get_balance(self):
@@ -555,16 +557,11 @@ class AlphaTrade(object):
     #     return instrument
         
     
-    # def search(self, symbol='Nifty Bank', exchange='NSE'):
-    #     """ search for scrips """
-    #     params = {'symbol': symbol}
-    #     data = self.__api_call_helper('search', Requests.GET, params, None)
-    #     scrips = data['result']
-
-    #     for scrip in scrips:
-    #         print(scrip)
-    #         if scrip['exchange'] == exchange and scrip['trading_symbol'] == symbol:
-    #             return self.__to_instrument(scrip)
+    def search(self, symbol='Nifty Bank', exchange='NSE'):
+        """ search for scrips """
+        params = {'symbol': symbol}
+        data = self.__api_call_helper('search', Requests.GET, params, None)
+        return data['result']
 
     def get_order_history(self, order_id=None):
         """ leave order_id as None to get all entire order history """

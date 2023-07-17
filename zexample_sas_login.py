@@ -33,6 +33,6 @@ sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=confi
 
 
 print(sas.get_profile())
-usd_inr = sas.get_instrument_by_symbol('NSE', 'PAYTM-EQ')
+usd_inr = sas.get_instrument_by_symbol('NSE', 'PAYTM')
 print(usd_inr)
 print(sas.get_balance())

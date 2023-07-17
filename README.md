@@ -1,4 +1,26 @@
 # Python APIs for SAS Online Alpha Trade Web Platform
+
+# MAJOR CHANGES : NEW VERSION 1.0.0
+
+## API endpoints are changed to match the new ones, bugs expected
+
+1. Removed check for enabled exchanges, you can now download or search symbols from MCX as well if it is not enabled
+2. TOTP SECRET or TOTP both can be given as argument while creating AlphaTrade object (if it is 6 digits it will conside TOTP else TOTP SECRET)
+3. Added new search function to search scrips which will return json for found scrips, you need to process it further
+4. More functions to come.
+5. Check whether streaming websocket is working or not
+
+# STEPS to work
+
+1. Clone the repo locally - `git clone https://github.com/algo2t/alphatrade.git` 
+2. Create a virtualenv - `python -m pip install virtualenv` and then `python -m virtualenv venv` and activate the `venv` environment.
+3. Install dev-requirement.txt - `python -m pip install -r dev-requirements.txt` - this is to ensure `setuptools==57.5.0` is installed. There is a bug with `protlib`, target is to get reed of `protlib` in future
+4. Install requirement.txt - `python -m pip install -r requirement.txt`
+5. Create the `config.py` file in root of cloned repo with `login_id`, `password` and `TOTP` SECRET, you can add the `access_token.txt` if you want to use existing `access_token`.
+6. Try the examples `python zlogin_example.py`, `python zexample_sas_login.py`, `python zhistorical_data.py` and `python zstreaming_data.py`
+7. Expecting issues with the streaming data !!! :P
+
+
 # NOTE:: This is Unofficial python module, don't ask SAS support team for help, use it AS-IS
 
 The Python APIs for communicating with the SAS Online Alpha Trade Web Platform.

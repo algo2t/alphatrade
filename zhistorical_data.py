@@ -11,7 +11,7 @@ import config as config
 sas = AlphaTrade(login_id=config.login_id,
                  password=config.password, twofa=config.TOTP)
 
-usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR AUG FUT')
+usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR SEP FUT')
 print(usd_inr)
 # print(sas.get_balance())
 start_time = datetime(2022, 1, 9, 9, 15, 0)

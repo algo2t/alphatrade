@@ -9,10 +9,10 @@ from time import sleep
 from alphatrade import AlphaTrade, LiveFeedType
 
 sas = AlphaTrade(login_id=config.login_id, password=config.password,
-                 twofa=config.TOTP, access_token=config.access_token, master_contracts_to_download=['NSE', 'NFO'])
+                 twofa=config.TOTP, access_token=config.access_token, master_contracts_to_download=['MCX', 'NFO'])
 
 
-ins_scrip = sas.get_instrument_by_symbol('NSE', 'PAYTM')
+ins_scrip = sas.get_instrument_by_symbol('MCX', 'NATURALGAS AUG FUT')
 
 print(ins_scrip)
 
@@ -43,10 +43,10 @@ def run_strategy():
                         run_in_background=True)
     while (socket_opened is False):    # wait till socket open & then subscribe
         pass
-    # sas.subscribe(ins_scrip, LiveFeedType.COMPACT)
+    sas.subscribe(ins_scrip, LiveFeedType.COMPACT)
     # sas.subscribe(ins_scrip, LiveFeedType.MARKET_DATA)
     # sas.subscribe(ins_scrip, LiveFeedType.SNAPQUOTE)
-    sas.subscribe(ins_scrip, LiveFeedType.FULL_SNAPQUOTE)
+    # sas.subscribe(ins_scrip, LiveFeedType.FULL_SNAPQUOTE)
 
     print("Script Start Time :: " + str(datetime.datetime.now()))
     while True:
