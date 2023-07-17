@@ -6,12 +6,12 @@ from datetime import datetime, timedelta
 
 from alphatrade import AlphaTrade
 
-import examples.config as config
+import config as config
 
 sas = AlphaTrade(login_id=config.login_id,
-                 password=config.password, twofa=config.twofa)
+                 password=config.password, twofa=config.TOTP)
 
-usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR APR FUT')
+usd_inr = sas.get_instrument_by_symbol('CDS', 'USDINR AUG FUT')
 print(usd_inr)
 # print(sas.get_balance())
 start_time = datetime(2022, 1, 9, 9, 15, 0)
@@ -28,8 +28,8 @@ end_time = datetime.now()
 # # Get Intraday Candles data based on interval - default 5 minute
 # df = sas.get_intraday_candles('MCX', 'NATURALGAS MAY FUT')
 # print(df)
-# df = sas.get_intraday_candles('MCX', 'NATURALGAS APR FUT', 15)
-# print(df)
+df = sas.get_intraday_candles('MCX', 'NATURALGAS AUG FUT', 15)
+print(df)
 
 # # Get Historical candles data
 # print(sas.get_historical_candles('MCX', 'NATURALGAS APR FUT',
@@ -44,12 +44,3 @@ nifty_bank_nse_index = sas.get_instrument_by_symbol('NSE', 'Nifty Bank')
 # print(nifty_bank_nse_index)
 print(sas.history(nifty_bank_nse_index, datetime(2022, 2, 2, 9, 15, 0), datetime.now(), interval=30, is_index=True))
 
-
-# import yfinance as yf
-
-# ivix = yf.download('^INDIAVIX', period='5d', interval='15m')
-# print(ivix)
-# bnf = yf.download('^NSEBANK', period='5d', interval='15m')
-# print(bnf)
-# nf = yf.download('^NSEI', period='5d', interval='15m')
-# print(nf)
