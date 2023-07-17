@@ -91,7 +91,7 @@ With an access token, you can instantiate an AlphaTrade object again. Ideally yo
 ### REST Documentation
 
 The original REST API that this SDK is based on is available online.
-[Alice Blue API REST documentation](http://antplus.aliceblueonline.com/#introduction)
+[Tradelabs API documentation](http://primusapi.tradelab.in/webapi/)
 
 ## Using the API
 
@@ -272,7 +272,7 @@ You can subscribe any one type of quote update for a given scrip. Using the `Liv
 - `LiveFeedType.SNAPQUOTE`
 - `LiveFeedType.FULL_SNAPQUOTE`
 
-Please refer to the original documentation [here](http://antplus.aliceblueonline.com/#marketdata) for more details of different types of quote update.
+Please refer to the original documentation [here](http://primusapi.tradelab.in/webapi/) for more details of different types of quote update.
 
 #### Subscribe to a live feed
 
