@@ -46,7 +46,7 @@ This module is installed via pip:
 pip install git+https://github.com/algo2t/alphatrade.git
 ```
 
-It can also be installed from [pypi](https://pypi.org/project/alphatrade/0.1.2/)  
+It can also be installed from [pypi](https://pypi.org/project/alphatrade/1.0.0/)  
 
 ```
 pip install alphatrade
@@ -63,12 +63,16 @@ pip --no-cache-dir install --upgrade alphatrade
 
 Python 3.x
 
+## Make sure to install `setuptools==57.5.0` for `protlib==1.5.0` to work properly
+
 Also, you need the following modules:
 
-- `protlib`
-- `websocket_client`
-- `requests`
-- `pandas`
+- `setuptools==57.5.0`
+- `protlib==1.5.0`
+- `websocket-client==1.6.1`
+- `requests==2.31.0`
+- `pandas==2.0.3`
+- `pyotp==2.8.0`
 
 The modules can also be installed using `pip`
 
@@ -143,6 +147,8 @@ totp = f"{int(pin):06d}" if len(pin) <=5 else pin
 sas = AlphaTrade(login_id=config.login_id, password=config.password, twofa=totp, access_token=config.access_token)
 
 ```
+
+## OR
 
 ```python
 ## filename config.py
